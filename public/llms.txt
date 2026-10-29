@@ -8,7 +8,7 @@ Address: https://sui-sealed-storage.meddleware.co.uk
 
 - [User guide](https://docs.meddleware.co.uk/blockchain/sui/sealed-storage/)
 - [Policies](https://docs.meddleware.co.uk/blockchain/sui/sealed-storage/policies)
-- [Developer integration](https://dev.meddleware.co.uk/sui/sealed-storage/integration)
+- [Developer integration](https://meddleware.dev/sui/sealed-storage/integration)
 
 ## SDK
 

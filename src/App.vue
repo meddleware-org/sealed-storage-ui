@@ -7,7 +7,7 @@ import SealedStorageView from './components/SealedStorageView.vue'
 
 const { mode, set } = useColorMode('dark')
 const DOCS_URL = import.meta.env.VITE_DOCS_URL || 'https://docs.meddleware.co.uk/blockchain/sui/sealed-storage/'
-const DEV_URL  = import.meta.env.VITE_DEV_URL  || 'https://dev.meddleware.co.uk/sui/sealed-storage/'
+const DEV_URL  = import.meta.env.VITE_DEV_URL  || 'https://meddleware.dev/sui/sealed-storage/'
 </script>
 
 <template>
