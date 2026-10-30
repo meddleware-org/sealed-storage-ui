@@ -3,6 +3,10 @@
 All notable changes to `@meddleware/seal-ui` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.43] - 2026-10-30
+
+- Point the developer-docs and indexer links at the machine zone (ADR-0005); current @meddleware packages.
+
 ## [0.0.42] - 2026-10-24
 
 ### Changed
