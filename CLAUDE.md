@@ -43,22 +43,32 @@ and later decrypt it if the on-chain policy allows.
 | `src/config.ts` | `network` (wallet-adapter selector); `sealConfig(net)` / `activeConfig`: ids from `deployments`, committee + threshold + Walrus endpoints from `VITE_*_{NET}`, and `problem` when sealing is unavailable |
 | `src/seal.ts` | Per-network `registry` + lazy `SealController` (`originalId` / `publishedAt` from `deployments`) |
 | `src/sealed-content.ts` | `discoverSealedContent` over sealed-storage-client `listSealedContent` (optional indexer) |
-| `src/wallet.ts` | Shim over `@meddleware/wallet-adapter` for the selected network; re-exports `useWallet` / `getSuiClient` / `signPersonalMessage` / `signAndExecute` |
+| `src/wallet.ts` | `createToolWallet({ requiredFeatures: ['sui:signPersonalMessage', 'sui:signTransaction'] })`: `useWallet` / `getSuiClient` / `signPersonalMessage` / `signAndExecute` |
 | `src/walrus.ts` | `storeBlob` (returns blob id + `endEpoch`) / `readBlob` over walrus-storage-client `/http`; take the config an operation started with |
-| `src/operation-scope.ts` | Tokens that bind an async operation to the network/account it started on; `SealedStorageView` invalidates them on a switch and every `await` is followed by `isCurrent()` |
+| `src/composables/useOperation.ts` | The one operation a view runs at a time (progress, failure), shared by the panels through `provide`/`inject`. Binds it to the network/account it started on (web-utils `createOperationScope`): the view invalidates it on a switch and every `await` in a task is followed by `isCurrent()` |
+| `src/composables/useGateSuggestions.ts` | The gates the wallet administers, asked again on a change of account, network or provider (an older answer is ignored) |
+| `src/lib/params.ts` | The policy parameters from a form (`encryptParams`, `decryptParams`): one definition of "required" for Encrypt, Decrypt and Re-seal |
 | `src/confirm.ts` | Rows for the Encrypt Confirm step (every policy parameter, unlock time in local + UTC) |
-| `src/components/SealedStorageView.vue` | Core tool UI (Encrypt/Decrypt/Unlock tabs, generic policy form, manifest, publish pointer). **Scoped** styles so it embeds without the global stylesheet. Exported from `src/index.ts`. |
+| `src/components/SealedStorageView.vue` | Core tool UI: the tabs, the trust note, the running operation's progress and failure, the result of sealing. Exported from `src/index.ts`. |
+| `src/components/EncryptPanel.vue`, `DecryptPanel.vue`, `UnlockPanel.vue` | One panel per tab (the wizard steps of each). Re-sealing is part of Decrypt; its result is handed to the view, which shows it on the Encrypt tab |
+| `src/components/ConfirmSummary.vue`, `ManifestResult.vue`, `GateIdPicker.vue`, `PolicyField.vue` | The Confirm step (and the gate operator read), the manifest + lifetime + publish, a gate id (picker or typed), one policy field by kind |
 | `src/index.ts` | Library entry — exports `SealedStorageView` for the dashboard to render inline |
-| `src/App.vue` | Standalone shell only: `AppHeader` (+ network badge, `ColorModeControl`) + `<SealedStorageView>` + `AppFooter` |
-| `src/styles.css` | Standalone-only globals (body/#app/h1); imported by `main.ts`. Component styles live scoped in `SealedStorageView.vue` — do NOT move them back here (a global import would restyle a host's body/#app/inputs). |
+| `src/App.vue` | Standalone shell only: `UiAppShell` with `AppHeader` (+ network badge, `ColorModeControl`), `<SealedStorageView>` and `AppFooter` |
+| `src/e2e.ts`, `src/e2e-data.ts`, `src/e2e-controller.ts` | End-to-end build only (`--mode e2e`): the mock wallet and a stub chain with two gates; the Seal controller is swapped for a stand-in by a Vite alias (`vite.config.ts`), because sealing for real needs a live committee. `main.ts` loads `e2e.ts` behind two static conditions, so no other build contains any of it |
+
+## End-to-end build
+
+`npm run build:e2e` (`VITE_E2E=1 vite build --mode e2e`) is what `npm run test:e2e` serves: the mock wallet shows up in the wallet dialog like an extension, the
+stub chain holds two gates the account administers, the stand-in controller "seals" and "unseals" without key servers, and the specs answer the Walrus
+publisher and aggregator in the page. So every step of every tab is checked and photographed offline, including the sealed result and the decrypt download.
+`vite.config.ts` refuses `VITE_E2E` in any other mode.
 
 ## Dual app + library
 
 This package is **both** a standalone SPA (`App.vue` + `main.ts`, `vite build`) and a library
 (`src/index.ts` exports `SealedStorageView`, resolved via `"exports"`). The dashboard imports `SealedStorageView` and
-wraps it in its own shell + shared wallet. `SealedStorageView` carries its own **scoped** styles, so no
-consumer needs sealed-storage-ui's `styles.css`. Keep the tool UI shell-free in `SealedStorageView.vue`; `App.vue` must
-remain a thin shell.
+wraps it in its own shell + shared wallet. The components bring their own CSS (through `@meddleware/ui`) and the app has no global stylesheet, so a host
+needs only the design tokens and ui's `reset.css`. Keep the tool UI shell-free in `SealedStorageView.vue`; `App.vue` must remain a thin shell.
 
 ## Network gating
 

@@ -1,6 +1,6 @@
 {
   "name": "@meddleware/sealed-storage-ui",
-  "version": "0.0.44",
+  "version": "0.0.45",
   "homepage": "https://docs.meddleware.co.uk/blockchain/sui/sealed-storage/",
   "description": "Standalone Vue 3 SPA for Sealed Storage — client-side Seal encryption + access-gated, decentralised Walrus storage on Sui.",
   "author": "MeddleWare <dev@meddleware.co.uk>",
@@ -31,26 +31,31 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
+    "build:e2e": "VITE_E2E=1 vite build --mode e2e",
     "preview": "vite preview",
     "type-check": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "lint:css": "stylelint \"src/**/*.{css,vue}\"",
     "lint:js": "eslint .",
     "lint": "npm run lint:css && npm run lint:js && npm run lint:html",
     "lint:html": "html-validate \"src/**/*.vue\"",
     "licenses": "node scripts/third-party-licenses.mjs",
-    "check:licenses": "node scripts/third-party-licenses.mjs --check"
+    "check:licenses": "node scripts/third-party-licenses.mjs --check",
+    "shots": "SHOTS=1 playwright test",
+    "lhci": "npm run build && lhci autorun"
   },
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
     "@meddleware/access-gate-client": "^0.0.13",
-    "@meddleware/design-tokens": "^0.1.11",
+    "@meddleware/design-tokens": "^0.1.12",
     "@meddleware/sealed-storage-client": "^0.0.26",
-    "@meddleware/ui": "^0.1.35",
-    "@meddleware/walrus-storage-client": "^0.0.33",
+    "@meddleware/ui": "^0.1.36",
+    "@meddleware/walrus-storage-client": "^0.0.34",
+    "@meddleware/web-utils": "^0.0.1",
     "@mysten/sui": "^2.33.2",
     "@mysten/wallet-standard": "^0.21.0",
     "vue": "^3.5.43"
@@ -59,8 +64,10 @@
     "@meddleware/wallet-adapter": ">=0.0.12 <0.2.0"
   },
   "devDependencies": {
-    "@meddleware/eslint-config": "^0.0.4",
-    "@meddleware/wallet-adapter": "^0.0.18",
+    "@lhci/cli": "^0.15.1",
+    "@meddleware/frontend-config": "^0.0.1",
+    "@meddleware/wallet-adapter": "^0.0.20",
+    "@playwright/test": "~1.64.1",
     "@types/node": "~26.6.5",
     "@vitejs/plugin-vue": "^6.0.9",
     "@vue/eslint-config-typescript": "^14.9.0",
@@ -87,8 +94,6 @@
     "node": "^22.18.0 || >=24.12.0"
   },
   "browserslist": [
-    "> 0.5%",
-    "last 2 versions",
-    "not dead"
+    "extends @meddleware/frontend-config/browserslist-config"
   ]
 }

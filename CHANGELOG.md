@@ -3,6 +3,10 @@
 All notable changes to `@meddleware/seal-ui` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.45] - 2026-10-31
+
+- Panels split from the view, shared operation scope
+
 ## [0.0.44] - 2026-10-30
 
 - Dependency updates (minor and patch groups) and workflow action bumps. No source change.

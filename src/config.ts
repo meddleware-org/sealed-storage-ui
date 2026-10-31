@@ -10,6 +10,7 @@ import { SEAL_POLICIES_DEPLOYMENTS, type SealPoliciesDeployment } from '@meddlew
 import { ACCESS_GATE_DEPLOYMENTS, type AccessGateDeployment } from '@meddleware/access-gate-client/deployments'
 import { useNetwork } from '@meddleware/wallet-adapter'
 import { withRuntimeEnv } from '@meddleware/ui'
+import type { SuiNetwork } from '@meddleware/web-utils'
 
 type EnvSource = Record<string, string | undefined>
 // Build-time values, with the runtime endpoint overrides (/runtime-config.json, ADR-0005) on top.
@@ -17,6 +18,9 @@ const env: EnvSource = withRuntimeEnv((import.meta as unknown as { env?: EnvSour
 
 /** The active network (read-only ref). */
 export const network = useNetwork().network
+
+/** The network as the explorer links know it (a network the explorer does not serve links to testnet). */
+export const explorerNetwork = computed<SuiNetwork>(() => (network.value === 'mainnet' ? 'mainnet' : 'testnet'))
 
 /** An own-property lookup: a caller-supplied key such as `constructor` never resolves to a prototype member. */
 function own<T>(table: Record<string, T>, key: string): T | undefined {

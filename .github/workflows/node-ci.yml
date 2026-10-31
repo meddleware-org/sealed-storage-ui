@@ -49,3 +49,16 @@ jobs:
 
       - name: Third-party licence notices
         run: npm run check:licenses && test -s dist/THIRD_PARTY_LICENSES
+
+      # Lighthouse runs on the production build; the browser tests then rebuild it in e2e mode (a mock wallet, a stub chain, a stand-in
+      # Seal controller).
+      - name: Lighthouse (accessibility 100, best practices, bundle budgets)
+        run: npx lhci autorun
+
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Browser tests (five browsers, WCAG 2.2 AA and AAA, reflow, keyboard)
+        run: npm run test:e2e
+        env:
+          E2E_BROWSERS: all
