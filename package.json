@@ -53,7 +53,7 @@
     "@meddleware/access-gate-client": "^0.0.13",
     "@meddleware/design-tokens": "^0.1.12",
     "@meddleware/sealed-storage-client": "^0.0.26",
-    "@meddleware/ui": "^0.1.36",
+    "@meddleware/ui": "^0.1.37",
     "@meddleware/walrus-storage-client": "^0.0.34",
     "@meddleware/web-utils": "^0.0.1",
     "@mysten/sui": "^2.33.2",
