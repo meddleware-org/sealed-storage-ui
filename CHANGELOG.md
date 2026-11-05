@@ -3,6 +3,16 @@
 All notable changes to `@meddleware/seal-ui` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.46] - 2026-11-05
+
+### Security
+
+- CI and the image build scan the production bundle for the e2e harness (`check-prod-bundle` from `@meddleware/frontend-config`), CI proves a production build with `VITE_E2E=1` is refused, and `src/e2e*.ts` is no longer in the published package. The Seal stand-in controller (`src/e2e-controller.ts`, which does no real encryption) is aliased only when the build mode is `e2e` **and** `VITE_E2E` is set, and its markers are in the scan.
+
+### Changed
+
+- Dependency alignment: `@meddleware/ui` ^0.1.38 (form-field edge contrast, sticky-offset and focus-not-obscured fixes), `@meddleware/design-tokens` ^0.1.13, `@meddleware/web-utils` ^0.0.2 and `@meddleware/frontend-config` ^0.0.2 (the shared sweep now also checks that focus is not hidden behind fixed content).
+
 ## [0.0.45] - 2026-10-31
 
 - Panels split from the view, shared operation scope
