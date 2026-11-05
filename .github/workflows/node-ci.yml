@@ -47,6 +47,26 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Production build carries no e2e harness
+        run: npm run check:bundle
+
+      - name: A production build refuses VITE_E2E
+        run: |
+          if VITE_E2E=1 npx vite build --outDir "$RUNNER_TEMP/refused" > /dev/null 2>&1; then
+            echo "::error::a production build with VITE_E2E=1 succeeded: the e2e harness could be shipped"
+            exit 1
+          fi
+
+      - name: Package contents (no e2e harness in the tarball)
+        run: |
+          npm pack --dry-run --json > pack.json
+          node -e "
+            const j = JSON.parse(require('fs').readFileSync('pack.json', 'utf8'))
+            const p = Array.isArray(j) ? j[0] : Object.values(j)[0] // npm 12 keys the report by package name
+            const bad = p.files.map((f) => f.path).filter((f) => /(^|\\/)e2e/.test(f))
+            if (bad.length) { console.error('e2e files in the tarball:', bad); process.exit(1) }
+          "
+
       - name: Third-party licence notices
         run: npm run check:licenses && test -s dist/THIRD_PARTY_LICENSES
 

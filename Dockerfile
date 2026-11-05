@@ -63,7 +63,7 @@ ENV VITE_NETWORK=${VITE_NETWORK} \
     VITE_WALRUS_MAX_UPLOAD_BYTES=${VITE_WALRUS_MAX_UPLOAD_BYTES} \
     VITE_INDEXER_URL=${VITE_INDEXER_URL}
 
-RUN npm run build && npm run licenses
+RUN npm run build && npm run check:bundle && npm run licenses
 
 # ── runtime stage ─────────────────────────────────────────────────────────────
 FROM quay.io/meddleware-org/static-server:0.1.11@sha256:94685b948d5086ccdb5b0b5d3b7caef6f2e3d1e4b9f7f8a311e9f26950da3723

@@ -3,7 +3,7 @@
 **Classification:** Internal security review
 **Project:** `repos/sealed-storage-ui` — `@meddleware/sealed-storage-ui`, Vue 3 SPA and library for sealing content to Sui policies with Seal and storing it on Walrus (`sui-sealed-storage.meddleware.co.uk`; embedded in the dashboard)
 **Project type:** Vue app + UI library
-**Template:** AUDIT_TEMPLATE.md (2026-10-08) + AUDIT_TEMPLATE_VUE.md (2026-10-08) + AUDIT_TEMPLATE_TS.md (2026-10-08) + AUDIT_TEMPLATE_SUI_CLIENT.md (2026-10-08) + AUDIT_TEMPLATE_SEAL.md (2026-09-30) + AUDIT_TEMPLATE_WALRUS.md (2026-09-30) + AUDIT_TEMPLATE_IMG.md (2026-10-08)
+**Template:** AUDIT_TEMPLATE.md (2026-11-01) + AUDIT_TEMPLATE_VUE.md (2026-11-01) + AUDIT_TEMPLATE_TS.md (2026-11-01) + AUDIT_TEMPLATE_SUI_CLIENT.md (2026-10-08) + AUDIT_TEMPLATE_SEAL.md (2026-09-30) + AUDIT_TEMPLATE_WALRUS.md (2026-09-30) + AUDIT_TEMPLATE_IMG.md (2026-10-08) + AUDIT_TEMPLATE_A11Y.md (2026-11-01)
 Not triggered: AUTH (no credential is held or issued; the SessionKey is sealed-storage-client's, in memory, and no API key exists), OPS (no script signs on a real chain), PROXY, WORKERS, GO, RUST, SITE, PLATFORM (the cluster is audited with the workspace).
 **Seal SDK:** `@mysten/seal` 1.4.19 (peer of `@meddleware/sealed-storage-client` 0.0.20, `^1.4.18`; one copy)
 **Key-server mode:** testnet: Mysten committee via its aggregator + two Mysten Open-mode servers (the aggregator counts as one server); mainnet: three keyless Open-mode independent servers (ADR-0002, D24)
@@ -32,7 +32,7 @@ Not triggered: AUTH (no credential is held or issued; the SessionKey is sealed-s
 **Deployed by:** `post-bootstrap/sealed-storage-ui/overlays/default`; digest from `config/images.yaml`
 **Build args:** `CSP`, `VITE_NETWORK` and the `VITE_SEAL_*`, `VITE_WALRUS_*`, `VITE_INDEXER_URL` variables above — none secret, none a test switch (F15: the two public values are passed from a repository variable, falling back to the existing secret)
 **Deployment status:** npm v0.0.38 (2026-10-18); image `quay.io/meddleware-org/sealed-storage-ui` serving `sui-sealed-storage.meddleware.co.uk` at 0.0.38 (`sha256:a000ba2e…d174`; release tag `v0.0.38` = `907df8d`; released, signature verified and deployed 2026-10-18, rollout succeeded; 0.0.37 `sha256:7e919894…` was deployed 2026-10-09; the live bundle carries `seal_policies` `0x0c8f7349…`, `PolicyConfig` `0xee0403ba…`, `access_gate` `0xd7ddaa94…` and no superseded id, checked 2026-10-18; live headers re-checked 2026-10-18); embedded in dashboard 0.1.85
-**Review date:** 2026-09-18 (first pass) · re-verified 2026-10-02 · re-verified 2026-10-09 · fix wave 2026-10-18 (0.0.38, released and deployed); 0.0.43 re-verified 2026-10-30 (Point the developer-docs and indexer links at the machine zone (ADR-0005); current @meddleware packages); 0.0.44 re-verified 2026-10-30 (Dependency updates (minor and patch groups) and workflow action bumps); 0.0.45 re-verified 2026-10-31 (Panels split from the view, shared operation scope)
+**Review date:** 2026-09-18 (first pass) · re-verified 2026-10-02 · re-verified 2026-10-09 · fix wave 2026-10-18 (0.0.38, released and deployed); 0.0.43 released 2026-10-30 (Point the developer-docs and indexer links at the machine zone (ADR-0005); current @meddleware packages); 0.0.44 released 2026-10-30 (Dependency updates (minor and patch groups) and workflow action bumps); 0.0.45 released 2026-10-31 (Panels split from the view, shared operation scope); frontend-wave delta review 2026-11-01 (real review of the 2026-10-19 → 2026-11-01 changes; see the delta section)
 **Reviewer:** Internal review
 **Severity ceiling:** Medium — confidentiality comes from Seal and the on-chain policy; the app chooses the policy, identity and storage and presents what users are sealing to, so a defect can mislead or deny, not disclose on its own.
 **Status:** fix wave 2026-10-18 (0.0.38; released and deployed 2026-10-18, signature verified, rollout succeeded); re-verified 2026-10-09
@@ -95,6 +95,8 @@ testnet suite passed against the new packages on 2026-10-09; the end-to-end seal
 not browser-tested here (C.2).
 
 The severity ceiling stays Medium.
+
+**2026-11-01 update.** The 1 005-line view was split into panels with a shared operation scope and the app gained an end-to-end build whose Seal controller is a no-op stand-in. The review found that nothing inspected the production build for the harness or the stand-in, that the tarball carried both, and that the alias needed the same two-part condition as the entry; all three are fixed in 0.0.46 (F20–F22). The operation-scope and confirm-step properties hold (F23, F24) and the sweep passes (F25).
 
 ## Threat model / trust boundaries
 
@@ -442,6 +444,52 @@ verifies signatures, so it would not run).
 **Remediation / evidence:** the mirror is listed as best-effort; the public job has no `continue-on-error`.
 The credential inventory (scope, holder, expiry, rotation) is the maintainer item.
 
+### Frontend wave delta review (2026-11-01) — 0.0.43 to 0.0.45 reviewed · 0.0.46 prepared
+
+Scope: the changes since the last substantive entry (2026-10-24, which logged the rename, the identifier alignment and the runtime endpoint config): `SealView.vue` (1 005 lines) split into `EncryptPanel`, `DecryptPanel`, `UnlockPanel`, `ConfirmSummary`, `ManifestResult`, `GateIdPicker`, `PolicyField` and a `SealedStorageView`; the operation scope (`useOperation`, web-utils `createOperationScope`) shared by the panels; `lib/params.ts`; the end-to-end build mode (`src/e2e.ts`, `e2e-data.ts`, and `e2e-controller.ts`, a stand-in Seal controller swapped in by a Vite alias); the shared wallet factory; the five-browser sweep and Lighthouse CI. The release tool's "re-verified" marks for these releases recorded no review; this section is the review. Read: `useOperation.ts`, `ConfirmSummary.vue`, `lib/params.ts`, `src/e2e.ts`, `e2e-controller.ts`, `vite.config.ts`, `main.ts`, the panels' flow, the workflows, the Dockerfile and the tests; and, for the parameter boundary, how `sealed-storage-client` refuses a non-integer unlock time (`u64beBytes` throws on `NaN`). Ran (with the locally packed `ui` 0.1.38, `design-tokens` 0.1.13, `web-utils` 0.0.2, `frontend-config` 0.0.2): the audit gate (0 not allowlisted; the two `extract-zip` advisories are allowlisted until 2027-01-31), `vue-tsc`, lint (stylelint, eslint, html-validate), `vitest` (94 tests), the production build, `check:bundle` on that build (no e2e hook and no stand-in marker (`e2e session key`)), `npm pack --dry-run` (30 files, 87 KiB, no e2e file), and the browser suite on Chromium, Firefox, WebKit, a Pixel 7 and an iPhone 14 with the CI font (DejaVu Sans through fontconfig): **630 passed in 14.1 minutes**.
+
+### F20 — No production-artefact scan for the end-to-end harness
+**Severity:** Medium   **Disposition:** RESOLVED
+**Where:** `package.json` (no bundle check), `Dockerfile`, `.github/workflows/node-ci.yml`; `vite.config.ts` and `src/main.ts` held the only controls.
+**Issue:** the e2e build registers a mock wallet and a stub chain, and — specific to this app — swaps the Seal controller for `src/e2e-controller.ts`, a stand-in that "encrypts" by returning the plaintext under a fixed identity and "decrypts" by returning the ciphertext. The controls were the entry's static condition (`MODE === 'e2e' && VITE_E2E === '1'`) and `assertE2eOnlyInE2eMode`; neither inspected the built output (base §B.2 *Test-only modes*, VUE §A *Test hooks*).
+**Impact:** a later change to the entry file, a bundler upgrade that stops folding the static condition, or a mis-set mode in an image build would ship a mock wallet in a signing app and nothing but a reviewer would notice; for this app the leak would be worse than a mock wallet: a build that aliased the stand-in would tell people their file is sealed while storing it in the clear
+**Remediation / evidence:** the shared `check-prod-bundle` of `@meddleware/frontend-config` 0.0.2 runs after the production build in `node-ci.yml` and in the Dockerfile (`RUN npm run build && npm run check:bundle && npm run licenses`), with the stand-in's own marker as an extra (`check-prod-bundle dist --also 'e2e session key'`); a CI step runs `VITE_E2E=1 vite build` in production mode and fails the job if it succeeds. Controls run here: the production build is clean; the e2e build left in `dist/` by the browser suite fails the scan on the six wallet hooks **and** on `marker e2e session key` in `e2e-controller-*.js`. 0.0.46.
+
+### F21 — The published tarball carried the end-to-end modules
+**Severity:** Low   **Disposition:** RESOLVED
+**Where:** `package.json` `files` (`src`); the e2e modules are `src/e2e.ts`, `src/e2e-data.ts` and `src/e2e-controller.ts`.
+**Issue:** the package ships `src/` as a library, and `src/e2e-controller.ts`, `src/e2e-data.ts`, `src/e2e.ts` — the mock wallet installer and its data — were in it. Nothing imports them from the library entry, but they are test-only code in a published artefact (TS lens B.TS-1; base §B.2 test-only modes).
+**Impact:** consumers download test doubles they never load; no behavioural impact
+**Remediation / evidence:** `"!src/e2e*.ts"` in `files` (`npm pack --dry-run`: 30 files, 87 KiB, no e2e file); `node-ci.yml` asserts that no packed file path matches `e2e`.
+
+### F22 — The stand-in Seal controller alias was selected on the build mode alone
+**Severity:** Low   **Disposition:** RESOLVED
+**Where:** `vite.config.ts` (`resolve.alias`)
+**Issue:** the module alias that replaces `@meddleware/sealed-storage-client/controller` with the no-op stand-in was applied when `mode === 'e2e'`, while the harness in `main.ts` needs the mode **and** the flag (`VITE_E2E === '1'`). VUE §A *Test hooks* requires hooks and module substitutions to be gated on both.
+**Impact:** a `vite build --mode e2e` without the flag would build a bundle with the stand-in aliased in but no harness loaded — an inconsistent artefact whose Seal calls do nothing real; the scan (F20) would catch it only if it ran on that build.
+**Remediation / evidence:** the alias needs `mode === 'e2e' && process.env.VITE_E2E === '1'`, the same pair as the entry; the production-artefact scan looks for the stand-in's marker as well. 0.0.46.
+
+### F23 — Positive: a network or account switch discards an operation in flight, and nothing from it lands on the new state
+**Severity:** Positive
+**Where:** `src/composables/useOperation.ts`, `src/components/ConfirmSummary.vue`
+**Evidence:** `createOperation` binds every task to the network and account it started on (`createOperationScope`); a synchronous watcher invalidates the scope on a switch, drops `busy`, and says so in a live region; every `await` in a task is followed by `isCurrent()`; the task receives the configuration it started with, so a late call never reaches another network. `ConfirmSummary` uses a separate `createGeneration` for the gate-operator read. Cached session keys are dropped on disconnect or account change (CLAUDE.md, Storage and discovery safety).
+
+### F24 — Positive: the confirm step shows what the content is sealed to, in full, before anything is stored
+**Severity:** Positive
+**Where:** `src/components/ConfirmSummary.vue`, `src/lib/params.ts`
+**Evidence:** `ConfirmSummary` lists the policy, every policy parameter (`confirmRows`, unlock time in local and UTC), the file, the label, the gate operator read from the chain (with a warning when the gate is not an access gate of this network) and the retention in epochs with the consequence stated. A required field left empty fails with one message for Encrypt, Decrypt and Re-seal (`lib/params.ts`); an unparseable unlock time becomes `NaN`, which `sealed-storage-client`'s `u64beBytes` refuses ("u64 must be a safe integer") rather than encoding a wrong time.
+
+### F25 — Positive: the shared sweep covers every screen and passes on five browsers with the CI font
+**Severity:** Positive
+**Where:** e2e/a11y.spec.ts (`defineA11ySuite`, AAA `gate`)
+**Evidence:** eight states — disconnected, encrypt (policy, details, confirm, sealed), decrypt (empty and with policy fields) and unlock — each at AA and AAA (gating) in all ten theme × season looks, at 320 px, 200% text, in forced colours, under reduced motion and by keyboard, on five browser projects: 630 tests passed with the CI font (the stand-in controller and the mock wallet stand behind the e2e build).
+
+### Delta notes (A11Y lens, `AUDIT_TEMPLATE_A11Y.md`)
+- **Support promise:** the shared browserslist (`@meddleware/frontend-config/browserslist-config`); build target through `viteTarget()`; compat lints on.
+- **Accessibility gates:** the shared sweep over eight states (axe AA and AAA `gate`; 320 px reflow; 200% text; forced colours; reduced motion; keyboard incl. focus not obscured), Lighthouse CI on the production build, five browser projects in CI.
+- **Known exceptions:** none disabled; the 44 px enhanced target size, link purpose, reading order and screen-reader announcements are reviewed from screenshots (`npm run shots`), not automated.
+- **Supply chain:** `.github/audit-gate.mjs` with two dated `extract-zip` allowlist entries (dev-only, via `@lhci/cli`, expiry 2027-01-31, D104; OPERATOR_TASKS.md) and the `basic-ftp`/`tmp`/`zod` overrides; Dependabot (npm, Actions, Docker); `@meddleware/frontend-config` is a dev dependency (its audit F5).
+
 ## Section A — Invariant verification matrix
 
 | # | Invariant | Enforced at | Proven by | Status |
@@ -724,3 +772,4 @@ None (ADR-0002 OQs decided: D24).
 - 2026-10-24 — repository renamed from `seal-ui` to `sealed-storage-ui` (workspace naming convention, `docs/architecture/ADR-0003-naming.md`): package, image, host and path names updated throughout. No finding, disposition or evidence changed.
 - 2026-10-24 — identifier alignment (`docs/architecture/ADR-0004-identifier-alignment.md`): text names `sealed_storage`; no behaviour change.
 - 2026-10-24 — machine-zone readiness (workspace ADR-0005, C1z): endpoints read through `@meddleware/ui` `withRuntimeEnv`, loaded from a same-origin `/runtime-config.json` (strict key allowlist, https-only, no credentials/query/fragment; a missing, non-JSON or invalid file keeps the build values) before the app modules load; own `robots.txt` and `llms.txt`. Verified: one build served by static-server 0.1.11 with and without the file calls the configured indexer / falls back, 0 CSP violations, 0 page errors (headless Chromium).
+- 2026-11-01 — frontend-wave delta review of 0.0.43 to 0.0.45. Read the operation scope, confirm summary, parameter handling, e2e harness and stand-in, build configuration, workflows and Dockerfile; ran the gates and the five-browser suite with the CI font (630 passed in 14.1 minutes). Found and fixed F20 (nothing inspected the production artefact for the e2e harness or the no-op Seal stand-in: shared `check-prod-bundle` in CI and the image build, with the stand-in's marker), F21 (the e2e modules in the published tarball) and F22 (the stand-in alias gated on the mode alone); F23–F25 recorded as Positive. The release tool's bare "re-verified" marks were reworded to "released". `**Template:**` dates reconciled to the 2026-11-01 registry (TS/VUE changes add rows; the VUE colour row moved to A11Y, applied in full here) with no disposition change.
