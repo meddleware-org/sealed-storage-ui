@@ -1,9 +1,9 @@
 {
   "name": "@meddleware/sealed-storage-ui",
-  "version": "0.0.47",
+  "version": "0.0.48",
   "homepage": "https://docs.meddleware.co.uk/blockchain/sui/sealed-storage/",
   "description": "Standalone Vue 3 SPA for Sealed Storage — client-side Seal encryption + access-gated, decentralised Walrus storage on Sui.",
-  "author": "MeddleWare <dev@meddleware.co.uk>",
+  "author": "Meddleware <dev@meddleware.co.uk>",
   "license": "0BSD",
   "repository": {
     "type": "git",
@@ -42,11 +42,12 @@
     "lint:js": "eslint .",
     "lint": "npm run lint:css && npm run lint:js && npm run lint:html",
     "lint:html": "html-validate \"src/**/*.vue\"",
-    "licenses": "node scripts/third-party-licenses.mjs",
-    "check:licenses": "node scripts/third-party-licenses.mjs --check",
+    "licenses": "mw-third-party-licenses",
+    "check:licenses": "mw-third-party-licenses --check",
     "shots": "SHOTS=1 playwright test",
     "lhci": "npm run build && lhci autorun",
-    "check:bundle": "check-prod-bundle dist --also 'e2e session key'"
+    "check:bundle": "check-prod-bundle dist --also 'e2e session key'",
+    "check:csp": "mw-check-csp-inline @Dockerfile dist"
   },
   "publishConfig": {
     "access": "public"
@@ -55,20 +56,20 @@
     "@meddleware/access-gate-client": "^0.0.13",
     "@meddleware/design-tokens": "^0.1.13",
     "@meddleware/sealed-storage-client": "^0.0.26",
-    "@meddleware/ui": "^0.1.39",
+    "@meddleware/ui": "^0.1.40",
     "@meddleware/walrus-storage-client": "^0.0.34",
-    "@meddleware/web-utils": "^0.0.2",
+    "@meddleware/web-utils": "^0.0.3",
     "@mysten/sui": "^2.33.2",
     "@mysten/wallet-standard": "^0.21.0",
     "vue": "^3.5.43"
   },
   "peerDependencies": {
-    "@meddleware/wallet-adapter": ">=0.0.12 <0.2.0"
+    "@meddleware/wallet-adapter": ">=0.0.22 <0.2.0"
   },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",
-    "@meddleware/frontend-config": "^0.0.2",
-    "@meddleware/wallet-adapter": "^0.0.21",
+    "@meddleware/frontend-config": "^0.0.7",
+    "@meddleware/wallet-adapter": "^0.0.22",
     "@playwright/test": "~1.64.1",
     "@types/node": "~26.6.5",
     "@vitejs/plugin-vue": "^6.0.9",
@@ -102,5 +103,10 @@
     "basic-ftp": "^6.2.4",
     "tmp": "^0.2.7",
     "zod": "^4.6.7"
+  },
+  "meddleware": {
+    "kind": "app",
+    "csp": "chain",
+    "lhci": true
   }
 }

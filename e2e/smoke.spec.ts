@@ -1,7 +1,7 @@
 // Smoke tests of the built app (the e2e build: a mock wallet, a stub chain, a stand-in Seal controller): the shell mounts without an
 // uncaught error, and each tab does its job end to end against the stand-ins: seal and store, publish a pointer, decrypt.
 import { expect, test } from '@playwright/test'
-import { E2E_GATES, E2E_OPERATOR } from '../src/e2e-data.js'
+import { E2E_GATES, E2E_GATE_OWNER } from '../src/e2e-data.js'
 import { BLOB_ID, BLOB_OBJECT, END_EPOCH, MANIFEST, confirm, decryptReady, disconnected, sealed, unlock } from './open.js'
 
 test('mounts, shows its landmarks and the tabs, and asks for a wallet first', async ({ page }) => {
@@ -17,13 +17,14 @@ test('mounts, shows its landmarks and the tabs, and asks for a wallet first', as
   expect(errors).toEqual([])
 })
 
-test('the Confirm step shows everything the content is sealed to, including who operates the gate', async ({ page }) => {
+test('the Confirm step shows everything the content is sealed to, including who owns the gate', async ({ page }) => {
   await confirm(page)
   await expect(page.getByText('Studio pass').first()).toHaveCount(0) // the picker is gone; the id is what is sealed to
   const summary = page.getByRole('term').first()
   await expect(summary).toBeVisible()
   await expect(page.getByText(E2E_GATES.studio)).toBeVisible()
-  await expect(page.getByText(E2E_OPERATOR)).toBeVisible()
+  await expect(page.getByText('Gate owner', { exact: true })).toBeVisible()
+  await expect(page.getByText(E2E_GATE_OWNER)).toBeVisible()
   await expect(page.getByText('notes.txt')).toBeVisible()
   await expect(page.getByText(/Stored on Walrus for 5 epochs/)).toBeVisible()
 })

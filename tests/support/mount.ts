@@ -5,7 +5,7 @@ import { computed, ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
 export const GATE = `0x${'a1'.repeat(32)}`
-export const OPERATOR = `0x${'0b'.repeat(32)}`
+export const GATE_OWNER = `0x${'0b'.repeat(32)}`
 
 export function deferred<T>() {
   let resolve!: (v: T) => void
@@ -58,7 +58,7 @@ export async function mountView(setup: Setup = { network: 'testnet', address: '0
   const decrypt = vi.fn()
   const storeBlob = vi.fn()
   const readBlob = vi.fn()
-  const gateOperatorsFor = vi.fn(async () => [OPERATOR])
+  const gateOperatorsFor = vi.fn(async () => [GATE_OWNER])
   const discoverSealedContent = vi.fn()
   const signAndExecute = vi.fn()
   const resealCiphertext = vi.fn()

@@ -2,15 +2,17 @@
 // selects VITE_NETWORK in main.ts; embedded, the host's selector rules). Everything network-specific
 // is resolved for that network:
 //   - package ids (sealed_storage, access_gate) come from the published `deployments` — never env;
-//   - the key-server committee, threshold and Walrus endpoints are operator settings baked in as
+//   - the key-server committee, threshold and Walrus endpoints are deployment settings baked in as
 //     VITE_*_{NET} build vars, with Mysten defaults where they exist.
-import { computed } from 'vue'
+// A configuration fault is shown to a person as a plain "not available right now" (`./availability.js`); the technical cause (which
+// variable) is `problemCause`, logged to the console for the developer.
+import { computed, watch } from 'vue'
 import type { KeyServerConfig } from '@meddleware/sealed-storage-client'
 import { SEAL_POLICIES_DEPLOYMENTS, type SealPoliciesDeployment } from '@meddleware/sealed-storage-client/deployments'
 import { ACCESS_GATE_DEPLOYMENTS, type AccessGateDeployment } from '@meddleware/access-gate-client/deployments'
 import { useNetwork } from '@meddleware/wallet-adapter'
 import { withRuntimeEnv } from '@meddleware/ui'
-import type { SuiNetwork } from '@meddleware/web-utils'
+import { notAvailableNow, notAvailableOn } from './availability.js'
 
 type EnvSource = Record<string, string | undefined>
 // Build-time values, with the runtime endpoint overrides (/runtime-config.json, ADR-0005) on top.
@@ -19,8 +21,8 @@ const env: EnvSource = withRuntimeEnv((import.meta as unknown as { env?: EnvSour
 /** The active network (read-only ref). */
 export const network = useNetwork().network
 
-/** The network as the explorer links know it (a network the explorer does not serve links to testnet). */
-export const explorerNetwork = computed<SuiNetwork>(() => (network.value === 'mainnet' ? 'mainnet' : 'testnet'))
+/** The network as the explorer links know it (wallet-adapter's: a network the explorer does not serve links to testnet). */
+export const explorerNetwork = useNetwork().explorerNetwork
 
 /** An own-property lookup: a caller-supplied key such as `constructor` never resolves to a prototype member. */
 function own<T>(table: Record<string, T>, key: string): T | undefined {
@@ -34,8 +36,8 @@ function csv(v: string | undefined): string[] {
 /**
  * Key-server defaults (workspace ADR-0002). Testnet: Mysten's decentralized committee (via its
  * aggregator) plus Mysten's two Open-mode servers, threshold 2. Mainnet (D24): three keyless
- * Open-mode servers run by independent operators — Overclock, NodeInfra, H2O Nodes — at threshold 2,
- * so no single operator can decrypt and one may be down. No server needs an API key, so none is ever
+ * Open-mode servers run by independent operators of key servers — Overclock, NodeInfra, H2O Nodes — at
+ * threshold 2, so no single one can decrypt and one may be down. No server needs an API key, so none is ever
  * configured in the bundle. A committee behind an aggregator counts as ONE server.
  */
 const SERVER_DEFAULTS: Record<string, { ids: string[]; aggs: string[]; threshold: number }> = {
@@ -61,8 +63,8 @@ const SERVER_DEFAULTS: Record<string, { ids: string[]; aggs: string[]; threshold
 
 /**
  * Walrus HTTP endpoints. Walrus runs no public publisher on mainnet (a publisher pays SUI + WAL
- * itself), so mainnet has no publisher default: set `VITE_WALRUS_PUBLISHER_MAINNET` to an
- * operator-run authenticated publisher.
+ * itself), so mainnet has no publisher default: the build sets `VITE_WALRUS_PUBLISHER_MAINNET` to an
+ * authenticated publisher, and until it does the network reports itself unavailable.
  */
 const WALRUS_DEFAULTS: Record<string, { publisher: string; aggregator: string }> = {
   testnet: {
@@ -106,9 +108,9 @@ export function thresholdError(threshold: number, servers: readonly { weight?: n
 
 /**
  * Who could decrypt content sealed on a network. `independent` (the default): key servers run by
- * parties other than this app's operator, at a threshold no single one meets. `operator`: the
- * operator's own key server is in use (the ADR-0002 fallback), so the operator could decrypt; the
- * view says so.
+ * parties other than whoever hosts this app, at a threshold no single one meets. `operator`: the
+ * host's own key server is in use (the ADR-0002 fallback), so the host could decrypt; the view says
+ * so. (The values are the build setting's; a person reads "Meddleware" there.)
  */
 export type KeyCustody = 'independent' | 'operator'
 
@@ -126,8 +128,39 @@ export interface SealConfig {
   walrusAggregator: string
   /** Storage epochs for the ciphertext (`VITE_WALRUS_EPOCHS`, default 5). Meaningless when `problem` is set. */
   walrusEpochs: number
-  /** Why sealing is unavailable on this network, or null when it is configured. */
+  /** Why sealing is unavailable on this network, in words for a person, or null when it is configured. */
   problem: string | null
+  /** The technical cause of a configuration fault (which setting), for the console and the developer; null when there is none. */
+  problemCause: string | null
+}
+
+/**
+ * The technical cause of a configuration fault on a network that has a deployment, or null when the
+ * configuration is usable (pure). Names the build variables, so it is for the console, never the page.
+ */
+export function configCause(c: {
+  network: string
+  /** The raw `VITE_SEAL_KEY_CUSTODY_{NET}` value. */
+  rawCustody: string
+  epochsError: string | null
+  servers: readonly { weight?: number }[]
+  threshold: number
+  walrusPublisher: string
+}): string | null {
+  const NET = c.network.toUpperCase()
+  if (c.rawCustody !== 'independent' && c.rawCustody !== 'operator') {
+    return `VITE_SEAL_KEY_CUSTODY_${NET} must be "independent" or "operator"; got "${c.rawCustody}"`
+  }
+  if (c.epochsError) return c.epochsError
+  if (c.servers.length === 0) {
+    return `No Seal key servers are configured on ${c.network}: set VITE_SEAL_SERVER_OBJECT_IDS_${NET} (and VITE_SEAL_AGGREGATOR_URLS_${NET} for a committee).`
+  }
+  const threshold = thresholdError(c.threshold, c.servers)
+  if (threshold) return `${threshold} (VITE_SEAL_THRESHOLD_${NET})`
+  if (!c.walrusPublisher) {
+    return `No Walrus publisher is configured for ${c.network}. Walrus runs no public mainnet publisher; set VITE_WALRUS_PUBLISHER_${NET} to an authenticated publisher.`
+  }
+  return null
 }
 
 /** Resolve the configuration for `net` (pure; `envSource` is injectable for tests). */
@@ -149,18 +182,16 @@ export function sealConfig(net: string, envSource: EnvSource = env): SealConfig 
 
   const rawCustody = netEnv('VITE_SEAL_KEY_CUSTODY') ?? 'independent'
   const custody: KeyCustody = rawCustody === 'operator' ? 'operator' : 'independent'
-  const custodyError =
-    rawCustody === 'independent' || rawCustody === 'operator'
-      ? null
-      : `VITE_SEAL_KEY_CUSTODY_${NET} must be "independent" or "operator"; got "${rawCustody}"`
 
   const walrus = own(WALRUS_DEFAULTS, net)
   const lifetime = parseWalrusEpochs(envSource.VITE_WALRUS_EPOCHS)
-  const problem = custodyError ?? lifetime.error ?? (!seal
-    ? `Sealed Storage is not available on ${net}: no sealed_storage deployment is recorded for it.`
-    : servers.length === 0
-      ? `Sealed Storage is not configured on ${net}: set VITE_SEAL_SERVER_OBJECT_IDS_${NET} (and VITE_SEAL_AGGREGATOR_URLS_${NET} for a committee).`
-      : thresholdError(threshold, servers))
+  const walrusPublisher = netEnv('VITE_WALRUS_PUBLISHER') || walrus?.publisher || ''
+  // No recorded deployment is the plain "not available on <network>" (nothing is wrong); a deployment this site cannot serve is a
+  // configuration fault, which a person reads as "not available right now" while the cause goes to the console.
+  const problemCause = seal
+    ? configCause({ network: net, rawCustody, epochsError: lifetime.error, servers, threshold, walrusPublisher })
+    : null
+  const problem = !seal ? notAvailableOn(net) : problemCause ? notAvailableNow(net) : null
 
   return {
     network: net,
@@ -169,10 +200,11 @@ export function sealConfig(net: string, envSource: EnvSource = env): SealConfig 
     servers,
     threshold,
     custody,
-    walrusPublisher: netEnv('VITE_WALRUS_PUBLISHER') || walrus?.publisher || '',
+    walrusPublisher,
     walrusAggregator: netEnv('VITE_WALRUS_AGGREGATOR') || walrus?.aggregator || '',
     walrusEpochs: lifetime.epochs,
     problem,
+    problemCause,
   }
 }
 
@@ -193,9 +225,21 @@ export function aggregatorUrlFor(net: string, objectId: string, envSource: EnvSo
 /** The configuration for the active network. */
 export const activeConfig = computed(() => sealConfig(network.value))
 
+// A configuration fault is told to the developer once per cause (a person sees only "not available right now").
+const reported = new Set<string>()
+watch(
+  activeConfig,
+  (c) => {
+    if (!c.problemCause || reported.has(c.problemCause)) return
+    reported.add(c.problemCause)
+    console.error(`sealed-storage-ui: Sealed Storage is unavailable on ${c.network} (${c.problemCause})`)
+  },
+  { immediate: true },
+)
+
 /**
  * Largest ciphertext the app sends to the publisher. Public publishers cap requests at 10 MiB;
- * an operator-run publisher may allow more via VITE_WALRUS_MAX_UPLOAD_BYTES.
+ * a deployment with its own publisher may allow more via VITE_WALRUS_MAX_UPLOAD_BYTES.
  */
 export const WALRUS_MAX_UPLOAD_BYTES = Number(env.VITE_WALRUS_MAX_UPLOAD_BYTES || String(10 * 1024 * 1024))
 

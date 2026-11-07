@@ -63,9 +63,14 @@ describe('storeBlob', () => {
     await expect(storeBlob(new Uint8Array([1]), { sendObjectTo: OWNER })).rejects.toThrow(/already stored/)
   })
 
-  it('fails clearly when the network has no publisher (mainnet has no public one)', async () => {
+  it('tells a person it is unavailable, and the developer why, when the network has no publisher (mainnet has no public one)', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { storeBlob } = await load({ network: 'mainnet', walrusPublisher: '' })
-    await expect(storeBlob(new Uint8Array([1]), { sendObjectTo: OWNER })).rejects.toThrow(/VITE_WALRUS_PUBLISHER_MAINNET/)
+    const failure = await storeBlob(new Uint8Array([1]), { sendObjectTo: OWNER }).catch((e: Error) => e)
+    expect(failure).toBeInstanceOf(Error)
+    expect((failure as Error).message).toBe('Sealed Storage is not available here right now. Try again later or switch to testnet.')
+    expect(logged).toHaveBeenCalledWith(expect.stringContaining('VITE_WALRUS_PUBLISHER_MAINNET'))
+    logged.mockRestore()
   })
 
   it('refuses a ciphertext over the upload cap before any request', async () => {

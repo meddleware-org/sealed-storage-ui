@@ -142,7 +142,7 @@ function seal(): Promise<void> {
       <template v-if="needsLinkConfirm">
         <UiNotice type="warning">
           This access gate was preselected by a link you followed, not chosen by you. Anyone who holds a pass for it will be able to decrypt
-          this file. Check the gate id and its operator above.
+          this file. Check the gate id and its owner above.
         </UiNotice>
         <UiCheckField v-model="linkedConfirmed" label="I want to seal this file to the gate from the link" />
       </template>

@@ -29,9 +29,9 @@ access-gate-client) for the active network; they are not configuration.
 | `VITE_NETWORK` | Network the standalone build selects: `testnet` (default) or `mainnet`. Embedded, the host's selector rules. |
 | `VITE_SEAL_SERVER_OBJECT_IDS_{NET}` | CSV of key-server object ids (the committee) |
 | `VITE_SEAL_AGGREGATOR_URLS_{NET}` | CSV of aggregator URLs (index-aligned) |
-| `VITE_SEAL_KEY_CUSTODY_{NET}` | `independent` (default) or `operator`. Set `operator` only when the operator's own key server is in use (the self-hosted fallback); the view then warns that the operator could decrypt |
-| `VITE_SEAL_THRESHOLD_{NET}` | `t` over the configured servers; a committee behind an aggregator counts as one (default 2 on testnet and mainnet). An out-of-range value disables sealing on that network with an explanation |
-| `VITE_WALRUS_PUBLISHER_{NET}` | Walrus HTTP publisher. Testnet has a default; **mainnet has none** (Walrus runs no public mainnet publisher), so set an operator-run publisher |
+| `VITE_SEAL_KEY_CUSTODY_{NET}` | `independent` (default) or `operator`. Set `operator` only when the host's own key server is in use (the self-hosted fallback); the view then warns that Meddleware could decrypt |
+| `VITE_SEAL_THRESHOLD_{NET}` | `t` over the configured servers; a committee behind an aggregator counts as one (default 2 on testnet and mainnet). An out-of-range value disables sealing on that network: a person reads "not available here right now" and the cause (the variable) is logged with `console.error` |
+| `VITE_WALRUS_PUBLISHER_{NET}` | Walrus HTTP publisher. Testnet has a default; **mainnet has none** (Walrus runs no public mainnet publisher), so set an authenticated publisher; until then a network that has a deployment reports itself unavailable |
 | `VITE_WALRUS_AGGREGATOR_{NET}` | Walrus HTTP aggregator (Mysten reference endpoints by default) |
 | `VITE_WALRUS_MAX_UPLOAD_BYTES` | Largest ciphertext sent to the publisher (default 10 MiB, the public-publisher limit) |
 | `VITE_INDEXER_URL` | Optional read-indexer for sealed-content discovery (display data; falls back to the full node) |
@@ -54,8 +54,9 @@ docker build -t sealed-storage-ui .
 
 Key servers (workspace ADR-0002): testnet uses Mysten's committee and two Open-mode servers; mainnet
 uses three keyless Open-mode servers run by independent operators (Overclock, NodeInfra, H2O Nodes)
-at threshold 2. No server needs an API key, and none is ever put in the bundle. Mainnet sealing stays
-disabled with an in-app notice until the mainnet `sealed_storage` package is published.
+at threshold 2. No server needs an API key, and none is ever put in the bundle. A network with no recorded
+`sealed_storage` deployment (the `deployments` of sealed-storage-client decide) shows an in-app notice and
+sealing is disabled there; the notice offers the networks that have a deployment.
 
 **Re-seal.** Content can only be decrypted by the key servers it was sealed to. The Decrypt tab's
 re-seal action decrypts it with those servers and seals it again for the current ones, so content can

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { thresholdError } from '../src/config.js'
 
 describe('thresholdError', () => {
@@ -36,12 +36,23 @@ describe('sealConfig', () => {
     expect(c.problem).toBeNull()
   })
 
-  it('reports a network without a sealed_storage deployment', async () => {
+  it('says plainly that a network without a recorded sealed_storage deployment is not available, and offers the networks that have one', async () => {
     const { sealConfig } = await import('../src/config.js')
+    const { SEAL_POLICIES_DEPLOYMENTS } = await import('@meddleware/sealed-storage-client/deployments')
     const c = sealConfig('mainnet', {})
     expect(c.seal).toBeNull()
-    expect(c.problem).toMatch(/not available on mainnet/)
+    // The records decide: this holds only while mainnet has no recorded deployment, and the suggestion is a network that has one.
+    expect(Object.keys(SEAL_POLICIES_DEPLOYMENTS)).not.toContain('mainnet')
+    expect(c.problem).toBe('Sealed Storage is not available on mainnet. Switch to testnet.')
+    expect(c.problemCause).toBeNull() // nothing is misconfigured: it is simply not offered there
+    expect(c.problem).not.toMatch(/VITE_|sealed_storage|deployment|operator/i)
     expect(c.walrusPublisher).toBe('') // no public mainnet publisher
+  })
+
+  it('does not hide a missing deployment behind a bad setting', async () => {
+    const { sealConfig } = await import('../src/config.js')
+    const c = sealConfig('mainnet', { VITE_SEAL_THRESHOLD_MAINNET: '9', VITE_WALRUS_EPOCHS: 'many' })
+    expect(c.problem).toBe('Sealed Storage is not available on mainnet. Switch to testnet.')
   })
 
   it('reads per-network overrides of servers and threshold', async () => {
@@ -60,14 +71,17 @@ describe('sealConfig', () => {
     expect(c.walrusPublisher).toBe('https://pub.example')
   })
 
-  it('reports a threshold the committee cannot meet', async () => {
+  it('reports a threshold the committee cannot meet: a person reads "not available right now", the cause names the variable', async () => {
     const { sealConfig } = await import('../src/config.js')
-    expect(sealConfig('testnet', { VITE_SEAL_THRESHOLD_TESTNET: '5' }).problem).toMatch(/\[1, 3\]/)
+    const c = sealConfig('testnet', { VITE_SEAL_THRESHOLD_TESTNET: '5' })
+    // testnet is the only network with a recorded deployment, so there is no other network to switch to
+    expect(c.problem).toBe('Sealed Storage is not available here right now. Try again later.')
+    expect(c.problemCause).toMatch(/\[1, 3\].*VITE_SEAL_THRESHOLD_TESTNET/)
   })
 
-  it('reports a network with no committee', async () => {
+  it('reports a network with no deployment', async () => {
     const { sealConfig } = await import('../src/config.js')
-    expect(sealConfig('localnet', {}).problem).toMatch(/not available on localnet/)
+    expect(sealConfig('localnet', {}).problem).toBe('Sealed Storage is not available on localnet. Switch to testnet.')
   })
 
   it('mainnet defaults to three independent Open-mode servers at threshold 2 (ADR-0002, D24)', async () => {
@@ -102,7 +116,9 @@ describe('sealConfig', () => {
     expect(op.problem).toBeNull()
     expect(sealConfig('testnet', {}).custody).toBe('independent')
     const bad = sealConfig('testnet', { VITE_SEAL_KEY_CUSTODY_TESTNET: 'mine' })
-    expect(bad.problem).toMatch(/VITE_SEAL_KEY_CUSTODY_TESTNET must be "independent" or "operator"/)
+    expect(bad.problem).toMatch(/not available here right now/)
+    expect(bad.problem).not.toMatch(/VITE_/)
+    expect(bad.problemCause).toMatch(/VITE_SEAL_KEY_CUSTODY_TESTNET must be "independent" or "operator"/)
   })
 })
 
@@ -132,7 +148,9 @@ describe('sealConfig lifetime and lookups', () => {
     const { sealConfig } = await import('../src/config.js')
     expect(sealConfig('testnet', {}).walrusEpochs).toBe(5)
     expect(sealConfig('testnet', { VITE_WALRUS_EPOCHS: '12' }).walrusEpochs).toBe(12)
-    expect(sealConfig('testnet', { VITE_WALRUS_EPOCHS: '99' }).problem).toMatch(/VITE_WALRUS_EPOCHS/)
+    const bad = sealConfig('testnet', { VITE_WALRUS_EPOCHS: '99' })
+    expect(bad.problem).toMatch(/not available here right now/)
+    expect(bad.problemCause).toMatch(/VITE_WALRUS_EPOCHS/)
   })
 
   it('never resolves a prototype member for a caller-supplied network name', async () => {
@@ -145,5 +163,81 @@ describe('sealConfig lifetime and lookups', () => {
       expect(c.accessGateOriginalId, name).toBe('')
       expect(aggregatorUrlFor(name, '0x1', {}), name).toBeUndefined()
     }
+  })
+})
+
+describe('configCause', () => {
+  const ok = { network: 'mainnet', rawCustody: 'independent', epochsError: null, servers: [{ weight: 1 }, { weight: 1 }, { weight: 1 }], threshold: 2, walrusPublisher: 'https://pub.example' }
+
+  it('is null for a usable configuration', async () => {
+    const { configCause } = await import('../src/config.js')
+    expect(configCause(ok)).toBeNull()
+    expect(configCause({ ...ok, rawCustody: 'operator' })).toBeNull()
+  })
+
+  it('names the setting behind each fault, for the console', async () => {
+    const { configCause } = await import('../src/config.js')
+    expect(configCause({ ...ok, rawCustody: 'mine' })).toMatch(/VITE_SEAL_KEY_CUSTODY_MAINNET/)
+    expect(configCause({ ...ok, epochsError: 'VITE_WALRUS_EPOCHS must be an integer in [1, 53]; got "0"' })).toMatch(/VITE_WALRUS_EPOCHS/)
+    expect(configCause({ ...ok, servers: [] })).toMatch(/VITE_SEAL_SERVER_OBJECT_IDS_MAINNET/)
+    expect(configCause({ ...ok, threshold: 4 })).toMatch(/\[1, 3\].*VITE_SEAL_THRESHOLD_MAINNET/)
+    expect(configCause({ ...ok, walrusPublisher: '' })).toMatch(/VITE_WALRUS_PUBLISHER_MAINNET/)
+  })
+
+  it('checks the first fault in a fixed order', async () => {
+    const { configCause } = await import('../src/config.js')
+    expect(configCause({ ...ok, rawCustody: 'mine', servers: [], walrusPublisher: '' })).toMatch(/CUSTODY/)
+  })
+})
+
+describe('once mainnet has a recorded deployment (the records decide, not this app)', () => {
+  async function withMainnetRecord() {
+    vi.resetModules()
+    vi.doMock('@meddleware/sealed-storage-client/deployments', () => ({
+      SEAL_POLICIES_DEPLOYMENTS: {
+        testnet: { originalId: '0x1', publishedAt: '0x1', policyConfigId: '0x2' },
+        mainnet: { originalId: '0x3', publishedAt: '0x3', policyConfigId: '0x4' },
+      },
+    }))
+    return import('../src/config.js')
+  }
+  afterEach(() => {
+    vi.doUnmock('@meddleware/sealed-storage-client/deployments')
+    vi.resetModules()
+  })
+
+  it('stays unavailable, in plain words, until a Walrus publisher is configured (Walrus runs no public mainnet publisher)', async () => {
+    const { sealConfig } = await withMainnetRecord()
+    const c = sealConfig('mainnet', {})
+    expect(c.seal).not.toBeNull()
+    expect(c.problem).toBe('Sealed Storage is not available here right now. Try again later or switch to testnet.')
+    expect(c.problemCause).toMatch(/VITE_WALRUS_PUBLISHER_MAINNET/)
+  })
+
+  it('is available with a publisher, on the three independent key servers', async () => {
+    const { sealConfig } = await withMainnetRecord()
+    const c = sealConfig('mainnet', { VITE_WALRUS_PUBLISHER_MAINNET: 'https://pub.example' })
+    expect(c.problem).toBeNull()
+    expect(c.problemCause).toBeNull()
+    expect(c.servers).toHaveLength(3)
+  })
+
+  it('logs the technical cause for the developer once, when the active network cannot be served', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await withMainnetRecord()
+    const { useNetwork } = await import('@meddleware/wallet-adapter')
+    const { nextTick } = await import('vue')
+    useNetwork().setNetwork('testnet')
+    await nextTick()
+    expect(logged).not.toHaveBeenCalled()
+    useNetwork().setNetwork('mainnet')
+    await nextTick()
+    useNetwork().setNetwork('testnet')
+    useNetwork().setNetwork('mainnet')
+    await nextTick()
+    expect(logged).toHaveBeenCalledTimes(1)
+    expect(logged.mock.calls[0]?.[0]).toContain('VITE_WALRUS_PUBLISHER_MAINNET')
+    useNetwork().setNetwork('testnet')
+    logged.mockRestore()
   })
 })

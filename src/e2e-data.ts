@@ -5,5 +5,5 @@ const hex = (byte: string) => `0x${byte.repeat(32)}`
 /** The two gates the mock account administers. */
 export const E2E_GATES = { studio: hex('11'), open: hex('22') } as const
 
-/** Who the gates pay (their operator), as the Confirm step shows it. */
-export const E2E_OPERATOR = hex('0b')
+/** Who the gates pay (their owner), as the Confirm step shows it. */
+export const E2E_GATE_OWNER = hex('0b')

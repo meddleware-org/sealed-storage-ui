@@ -1,7 +1,18 @@
 # Changelog
 
-All notable changes to `@meddleware/seal-ui` are documented here.
+All notable changes to `@meddleware/sealed-storage-ui` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
+
+## [0.0.48] - 2026-11-07
+
+### Changed
+
+- When Sealed Storage cannot be used, the page says what a person can do instead of naming build settings: "Sealed Storage is not available on <network>. Switch to testnet." where the network has no recorded `sealed_storage` deployment (the networks offered come from the deployment records), and "Sealed Storage is not available here right now. Try again later or switch to testnet." when the site's own settings are wrong or incomplete (a `VITE_*` variable, a missing Walrus publisher). The technical cause is written to the console with `console.error` (`problemCause`, `configCause`) instead.
+- A network that has a deployment but no Walrus publisher is now reported as unavailable up front (it used to fail only after the person had chosen a file, with a message naming the variable). A network with no deployment says so whatever its other settings are.
+- The Confirm step labels the person who owns the gate "Gate owner" (it said "Gate operator"); the link warning says "its owner"; the notice for a site that runs its own key server says Meddleware (it said "this site's operator"). The package author and licence holder are spelled "Meddleware"; the page has a description.
+- The standalone page is the shared `AppToolShell` of `@meddleware/ui` ^0.1.40; the network comes from `selectBuiltNetwork` and `useNetwork().explorerNetwork` of `@meddleware/wallet-adapter` ^0.0.22, so the peer range is now `>=0.0.22 <0.2.0`. `SealedStorageView` is exported unchanged.
+- Internal: Vite, Vitest and TypeScript configuration come from `@meddleware/frontend-config` ^0.0.7 (`meddlewareApp`, `vueTestConfig`, the `vue-app` tsconfig base; the e2e Seal stand-in alias keeps its mode and flag condition); the audit gate and the licence notices run its `mw-audit-gate` and `mw-third-party-licenses` (the local copies are deleted); `mw-sync --check` and an inline-script check against the Content-Security-Policy (`check:csp`, also in the Dockerfile) run in CI; `@meddleware/web-utils` ^0.0.3.
+- Tests for the shell, the plain availability messages, the console cause, a mainnet record without a publisher, and the wording of every template and the page head.
 
 ## [0.0.47] - 2026-11-06
 

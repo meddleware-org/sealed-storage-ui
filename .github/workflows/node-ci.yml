@@ -27,7 +27,10 @@ jobs:
         run: npm ci
 
       - name: Audit dependencies
-        run: node .github/audit-gate.mjs
+        run: npx mw-audit-gate
+
+      - name: Shared files are current
+        run: npx mw-sync --check
 
       - name: Type-check
         run: npm run type-check
@@ -46,6 +49,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Inline scripts are covered by the CSP
+        run: npm run check:csp
 
       - name: Production build carries no e2e harness
         run: npm run check:bundle

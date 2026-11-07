@@ -4,6 +4,7 @@
 // network switch pass the configuration they started with, so a late call never reaches the new
 // network's publisher.
 import { readBlob as readViaAggregator, storeBlobViaPublisher } from '@meddleware/walrus-storage-client/http'
+import { notAvailableNow } from './availability.js'
 import { activeConfig, WALRUS_MAX_UPLOAD_BYTES, type SealConfig } from './config.js'
 
 /** A stored ciphertext: its blob id and, when the publisher reports it, the last epoch it is stored for. */
@@ -25,10 +26,12 @@ export async function storeBlob(
 ): Promise<StoredBlob> {
   const cfg = opts.config ?? activeConfig.value
   if (!cfg.walrusPublisher) {
-    throw new Error(
-      `No Walrus publisher is configured for ${cfg.network}. Walrus runs no public mainnet publisher; ` +
-        `set VITE_WALRUS_PUBLISHER_${cfg.network.toUpperCase()} to an operator-run publisher.`,
+    // Nothing a person can change: they read "not available right now"; the cause is for the developer.
+    console.error(
+      `sealed-storage-ui: no Walrus publisher is configured for ${cfg.network}. Walrus runs no public mainnet publisher; ` +
+        `set VITE_WALRUS_PUBLISHER_${cfg.network.toUpperCase()} to an authenticated publisher.`,
     )
+    throw new Error(notAvailableNow(cfg.network))
   }
   const stored = await storeBlobViaPublisher(bytes, {
     publisher: cfg.walrusPublisher,
@@ -49,6 +52,9 @@ export function readBlob(
   blobId: string,
   config: Pick<SealConfig, 'network' | 'walrusAggregator'> = activeConfig.value,
 ): Promise<Uint8Array> {
-  if (!config.walrusAggregator) throw new Error(`No Walrus aggregator is configured for ${config.network}.`)
+  if (!config.walrusAggregator) {
+    console.error(`sealed-storage-ui: no Walrus aggregator is configured for ${config.network}.`)
+    throw new Error(notAvailableNow(config.network))
+  }
   return readViaAggregator(blobId, { aggregator: config.walrusAggregator })
 }

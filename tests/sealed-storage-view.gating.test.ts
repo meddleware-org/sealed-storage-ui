@@ -13,19 +13,20 @@ describe('SealedStorageView network gating', () => {
     const t = await mountView({
       network: 'mainnet',
       address: null,
-      problem: 'Sealed Storage is not available on mainnet: no sealed_storage deployment is recorded for it.',
+      problem: 'Sealed Storage is not available on mainnet. Switch to testnet.',
     })
     expect(warnings(t.wrapper)).toHaveLength(1)
-    expect(t.wrapper.text()).toContain('not available on mainnet')
+    expect(t.wrapper.text()).toContain('not available on mainnet. Switch to testnet.')
   })
 
-  it('shows a configuration problem', async () => {
+  it('shows a configuration problem as what a person can do, naming no setting', async () => {
     const t = await mountView({
-      network: 'localnet',
+      network: 'mainnet',
       address: null,
-      problem: 'Sealed Storage is not configured on localnet: set VITE_SEAL_SERVER_OBJECT_IDS_LOCALNET',
+      problem: 'Sealed Storage is not available here right now. Try again later or switch to testnet.',
     })
-    expect(t.wrapper.text()).toContain('VITE_SEAL_SERVER_OBJECT_IDS_LOCALNET')
+    expect(t.wrapper.text()).toContain('Try again later or switch to testnet.')
+    expect(t.wrapper.text()).not.toMatch(/VITE_|operator/i)
   })
 
   it('hides the notice when configured', async () => {
@@ -33,10 +34,11 @@ describe('SealedStorageView network gating', () => {
     expect(warnings(t.wrapper)).toHaveLength(0)
   })
 
-  it('warns that the operator could decrypt when its own key server is in use', async () => {
+  it('warns that Meddleware could decrypt when its own key server is in use', async () => {
     const t = await mountView({ network: 'mainnet', address: null, custody: 'operator' })
     expect(warnings(t.wrapper)).toHaveLength(1)
-    expect(t.wrapper.text()).toContain("run by this site's operator, who could therefore decrypt it")
+    expect(t.wrapper.text()).toContain('run by Meddleware, who could therefore decrypt it')
+    expect(t.wrapper.text()).not.toMatch(/operator/i)
   })
 
   it('shows no custody notice for independent key servers', async () => {

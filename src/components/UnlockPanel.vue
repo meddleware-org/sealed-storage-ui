@@ -33,7 +33,7 @@ const step = ref(0)
 const gateId = ref(props.linkedGate ?? '')
 const nftId = ref('')
 const soulbound = ref(false)
-// Seal gives confidentiality, not authenticity: by default only the gate operator's pointers are listed.
+// Seal gives confidentiality, not authenticity: by default only the gate owner's pointers are listed.
 const includeOthers = ref(false)
 const discovered = shallowRef<SealedContentPointer[]>([])
 const gates = useGateSuggestions(() => (props.active ? (props.providers.find((p) => p.type === 'nft-gate') ?? null) : null))

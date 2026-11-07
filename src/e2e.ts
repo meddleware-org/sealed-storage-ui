@@ -1,10 +1,10 @@
 // End-to-end build only (`vite build --mode e2e`; main.ts loads this when MODE is `e2e` and VITE_E2E is `1`, both static, so every other
 // build drops it). A mock wallet is registered like an extension, and the chain client is a stub that holds two access gates the mock
-// account administers (offered as choices, and read for the operator on the Confirm step). Sealing itself is stood in for by
+// account administers (offered as choices, and read for the gate owner on the Confirm step). Sealing itself is stood in for by
 // `e2e-controller.ts`, and the Walrus endpoints are answered by the specs.
 import { accessGateDeployment } from '@meddleware/access-gate-client/deployments'
 import { MOCK_ADDRESS, createStubClient, installE2eWallet, okTransaction } from '@meddleware/wallet-adapter/testing'
-import { E2E_GATES, E2E_OPERATOR } from './e2e-data.js'
+import { E2E_GATES, E2E_GATE_OWNER } from './e2e-data.js'
 
 const hex = (byte: string) => `0x${byte.repeat(32)}`
 
@@ -12,7 +12,7 @@ const hex = (byte: string) => `0x${byte.repeat(32)}`
 function gate(over: Record<string, unknown>) {
   return {
     price_mist: '0',
-    payment_recipient: E2E_OPERATOR,
+    payment_recipient: E2E_GATE_OWNER,
     default_uses: '0',
     soulbound: false,
     auto_burn_at_zero: false,

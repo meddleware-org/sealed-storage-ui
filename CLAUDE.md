@@ -40,7 +40,8 @@ and later decrypt it if the on-chain policy allows.
 
 | File | Purpose |
 | --- | --- |
-| `src/config.ts` | `network` (wallet-adapter selector); `sealConfig(net)` / `activeConfig`: ids from `deployments`, committee + threshold + Walrus endpoints from `VITE_*_{NET}`, and `problem` when sealing is unavailable |
+| `src/config.ts` | `network` and `explorerNetwork` (both wallet-adapter's `useNetwork()`); `sealConfig(net)` / `activeConfig`: ids from `deployments`, committee + threshold + Walrus endpoints from `VITE_*_{NET}`, `problem` (plain words for a person) and `problemCause` (the technical cause, `configCause`, logged with `console.error`) when sealing is unavailable |
+| `src/availability.ts` | The two messages a person reads when a network cannot be used (`notAvailableOn`: no recorded deployment; `notAvailableNow`: a setting the person cannot change). The networks to switch to come from the `deployments` records |
 | `src/seal.ts` | Per-network `registry` + lazy `SealController` (`originalId` / `publishedAt` from `deployments`) |
 | `src/sealed-content.ts` | `discoverSealedContent` over sealed-storage-client `listSealedContent` (optional indexer) |
 | `src/wallet.ts` | `createToolWallet({ requiredFeatures: ['sui:signPersonalMessage', 'sui:signTransaction'] })`: `useWallet` / `getSuiClient` / `signPersonalMessage` / `signAndExecute` |
@@ -51,9 +52,9 @@ and later decrypt it if the on-chain policy allows.
 | `src/confirm.ts` | Rows for the Encrypt Confirm step (every policy parameter, unlock time in local + UTC) |
 | `src/components/SealedStorageView.vue` | Core tool UI: the tabs, the trust note, the running operation's progress and failure, the result of sealing. Exported from `src/index.ts`. |
 | `src/components/EncryptPanel.vue`, `DecryptPanel.vue`, `UnlockPanel.vue` | One panel per tab (the wizard steps of each). Re-sealing is part of Decrypt; its result is handed to the view, which shows it on the Encrypt tab |
-| `src/components/ConfirmSummary.vue`, `ManifestResult.vue`, `GateIdPicker.vue`, `PolicyField.vue` | The Confirm step (and the gate operator read), the manifest + lifetime + publish, a gate id (picker or typed), one policy field by kind |
+| `src/components/ConfirmSummary.vue`, `ManifestResult.vue`, `GateIdPicker.vue`, `PolicyField.vue` | The Confirm step (and the gate owner read), the manifest + lifetime + publish, a gate id (picker or typed), one policy field by kind |
 | `src/index.ts` | Library entry — exports `SealedStorageView` for the dashboard to render inline |
-| `src/App.vue` | Standalone shell only: `UiAppShell` with `AppHeader` (+ network badge, `ColorModeControl`), `<SealedStorageView>` and `AppFooter` |
+| `src/App.vue` | Standalone shell only: `AppToolShell` (title, docs/dev links) with the network badge in its `actions` slot, around `<SealedStorageView>` |
 | `src/e2e.ts`, `src/e2e-data.ts`, `src/e2e-controller.ts` | End-to-end build only (`--mode e2e`): the mock wallet and a stub chain with two gates; the Seal controller is swapped for a stand-in by a Vite alias (`vite.config.ts`), because sealing for real needs a live committee. `main.ts` loads `e2e.ts` behind two static conditions, so no other build contains any of it |
 
 ## End-to-end build
@@ -61,7 +62,11 @@ and later decrypt it if the on-chain policy allows.
 `npm run build:e2e` (`VITE_E2E=1 vite build --mode e2e`) is what `npm run test:e2e` serves: the mock wallet shows up in the wallet dialog like an extension, the
 stub chain holds two gates the account administers, the stand-in controller "seals" and "unseals" without key servers, and the specs answer the Walrus
 publisher and aggregator in the page. So every step of every tab is checked and photographed offline, including the sealed result and the decrypt download.
-`vite.config.ts` refuses `VITE_E2E` in any other mode.
+`vite.config.ts` (`meddlewareApp`) refuses `VITE_E2E` in any other mode.
+
+## Shared tooling
+
+`@meddleware/frontend-config` supplies the Vite and Vitest configuration (`meddlewareApp`, `vueTestConfig`), the tsconfig base, and the `mw-*` bins: `mw-audit-gate`, `mw-third-party-licenses`, `mw-check-csp-inline` (`npm run check:csp`, also in the Dockerfile) and `mw-sync` (`npx mw-sync --check` in CI keeps dependabot.yml, .dockerignore, the postcss/stylelint configs, the audit allowlist and the Dockerfile CSP equal to the `chain` profile; `--write` repairs them). The `"meddleware"` key in package.json declares the kind, CSP profile and Lighthouse use. The only app-specific part of `vite.config.ts` is the e2e stand-in alias for the Seal controller (mode **and** flag).
 
 ## Dual app + library
 
@@ -77,9 +82,13 @@ The network is wallet-adapter's shared runtime selector (the standalone `main.ts
 
 - a `sealed_storage` deployment recorded for the network (in sealed-storage-client's `deployments`);
 - key servers (defaults on testnet and mainnet, or `VITE_SEAL_SERVER_OBJECT_IDS_{NET}`);
-- a valid threshold.
+- a valid threshold;
+- a Walrus publisher (sealing stores the ciphertext).
 
-Otherwise the view shows the reason and disables sealing. A network switch clears what was shown
+Otherwise the view shows the reason and disables sealing. What a person reads is plain (words in
+`src/availability.ts`): "not available on <network>" where no deployment is recorded (and the networks that have one
+to switch to, from the records), "not available here right now" for a setting only the build can change. The
+variable names stay in `problemCause`, which `config.ts` logs once with `console.error` (D117). A network switch clears what was shown
 for the previous network, and registries and controllers are kept per network.
 
 Mainnet specifics (2026-09-29, workspace grounding log D4):
@@ -87,10 +96,11 @@ Mainnet specifics (2026-09-29, workspace grounding log D4):
 - The default key servers are three keyless Open-mode servers run by independent operators —
   Overclock, NodeInfra, H2O Nodes — at threshold 2 (workspace ADR-0002, D24): no single operator can
   decrypt and one may be down. `config.ts` never configures an API key; a test enforces it.
-- `VITE_SEAL_KEY_CUSTODY_{NET}=operator` marks the self-hosted fallback (the operator could decrypt);
-  the view then shows that notice. Any other value than `independent`/`operator` disables sealing.
-- There is no default mainnet Walrus publisher; storing fails with a clear error until
-  `VITE_WALRUS_PUBLISHER_MAINNET` names an operator-run publisher.
+- `VITE_SEAL_KEY_CUSTODY_{NET}=operator` marks the self-hosted fallback (Meddleware could decrypt;
+  the setting's value keeps its name); the view then shows that notice. Any other value than `independent`/`operator` disables sealing.
+- There is no default mainnet Walrus publisher; a network that has a deployment but no publisher
+  reports itself unavailable (cause in the console) until `VITE_WALRUS_PUBLISHER_MAINNET` names an
+  authenticated publisher. A network with no recorded deployment says so, whatever the settings.
 - A threshold outside `[1, total server weight]` disables sealing on that network with the reason.
 
 ## Storage and discovery safety
@@ -101,7 +111,7 @@ Mainnet specifics (2026-09-29, workspace grounding log D4):
 - Discovery is sealed-storage-client's `listSealedContent`: `SealedContentPublished` decoded from BCS at the
   deployment's original id, newest first with a page budget, gate ids compared normalised; from
   the read-indexer when `VITE_INDEXER_URL` is set (display data; falls back to the full node).
-- Seal gives confidentiality, not authenticity, so discovery lists only the gate operator's pointers
+- Seal gives confidentiality, not authenticity, so discovery lists only the gate owner's pointers
   by default (`gateOperators` -> `listSealedContent({ publishers })`); the Unlock tab has an explicit
   opt-in for other publishers, labelled unverified. `encrypt` refuses a gate that is not a `Gate` of
   the linked `access_gate` package (`accessGateOriginalId`).
@@ -120,8 +130,10 @@ build. For local dev: `cd ../sealed-storage-client && npm link`, then `npm link 
 
 - Do not add policy-specific logic here — it belongs in `@meddleware/sealed-storage-client` + `sealed_storage`.
 - Do not hold or derive decryption keys; the committee does that.
-- Do not hardcode or env-configure package ids; they come from `deployments`. Operator settings
+- Do not hardcode or env-configure package ids; they come from `deployments`. Deployment settings
   are read per network via `sealConfig` in `src/config.ts`.
+- Do not show a person a build variable, a script or "operator" (D117): put the words in `src/availability.ts`
+  and the cause in `problemCause`. `tests/wording.test.ts` holds every template to it.
 
 ---
 
@@ -137,8 +149,8 @@ build. For local dev: `cd ../sealed-storage-client && npm link`, then `npm link 
   here. The SDK-level story (controller, providers, manifest) lives in `@meddleware/sealed-storage-client`; the
   on-chain policy contracts in `sealed_storage` (`sealed-storage-sui`).
 
-### White-label operator path (to write later)
+### White-label path (to write later)
 
-- Deploying against an operator's **own `sealed_storage` package + key-server committee**: the
+- Deploying against a team's **own `sealed_storage` package + key-server committee**: the
   `VITE_SEAL_*` build args (committee ids, aggregator URLs, threshold) and the published
   `deployments` the package ids come from; branding via design-tokens + `AppHeader`.

@@ -28,6 +28,8 @@ const tab = ref<string>('encrypt')
 const { account } = useWallet()
 const providers = computed(() => registry.value.list() as SealPolicyProvider[])
 const disabled = computed(() => activeConfig.value.problem !== null)
+// The host runs a key server of its own (the ADR-0002 fallback): the one case where someone other than independent servers could decrypt.
+const hostHoldsKeys = computed(() => activeConfig.value.custody === 'operator')
 
 // Deep link from access-gate-ui: ?gate=<id> preselects the access-gate policy and the gate.
 const linkedGate = new URLSearchParams(location.search).get('gate')
@@ -61,9 +63,9 @@ watch(
     <UiToolIntro>Client-side encrypted, access-gated storage on Walrus + Sui.</UiToolIntro>
 
     <UiNotice v-if="activeConfig.problem" type="warning" :message="activeConfig.problem" />
-    <UiNotice v-else-if="activeConfig.custody === 'operator'" type="warning">
-      On {{ activeConfig.network }}, content is sealed with a key server run by this site's operator, who could therefore decrypt it. Do not
-      seal anything you would not share with the operator.
+    <UiNotice v-else-if="hostHoldsKeys" type="warning">
+      On {{ activeConfig.network }}, content is sealed with a key server run by Meddleware, who could therefore decrypt it. Do not
+      seal anything you would not share with Meddleware.
     </UiNotice>
 
     <details>

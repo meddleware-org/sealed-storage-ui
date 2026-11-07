@@ -64,6 +64,9 @@ ENV VITE_NETWORK=${VITE_NETWORK} \
     VITE_INDEXER_URL=${VITE_INDEXER_URL}
 
 RUN npm run build && npm run check:bundle && npm run licenses
+ARG CSP
+# The CSP has no 'unsafe-inline' for scripts: the build fails if dist/ ever carries an inline <script>.
+RUN npx mw-check-csp-inline "${CSP}" dist
 
 # ── runtime stage ─────────────────────────────────────────────────────────────
 FROM quay.io/meddleware-org/static-server:0.1.12@sha256:f2cdfac6c795ee8a442e144e9c2d9eabbbe6566c41fdc696fe3befe2aa8d052d

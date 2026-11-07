@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { flushPromises } from '@vue/test-utils'
-import { GATE, OPERATOR, alertText, deferred, file, mountView } from './support/mount.js'
+import { GATE, GATE_OWNER, alertText, deferred, file, mountView } from './support/mount.js'
 
 // SealedStorageView with its wiring mocked: network and account are refs the test switches mid-operation, and every slow dependency is a
 // promise the test settles by hand. Covers audit F11 (a result that arrives after a switch is dropped), F12 (the lifetime is shown) and F13
@@ -177,7 +177,7 @@ describe('F12: the storage lifetime is shown', () => {
 })
 
 describe('F13: the Confirm step shows what the content is sealed to', () => {
-  it('lists the gate id and the gate operator read from the chain', async () => {
+  it('lists the gate id and the gate owner read from the chain', async () => {
     const t = await mountView()
     const panel = t.encryptPanel()
     panel.type = 'nft-gate'
@@ -186,7 +186,9 @@ describe('F13: the Confirm step shows what the content is sealed to', () => {
     await flushPromises()
     const text = t.wrapper.text()
     expect(text).toContain(GATE)
-    expect(text).toContain(OPERATOR)
+    expect(text).toContain(GATE_OWNER)
+    expect(text).toContain('Gate owner')
+    expect(text).not.toMatch(/operator/i)
     expect(t.gateOperatorsFor).toHaveBeenCalledWith(GATE, expect.objectContaining({ network: 'testnet' }))
   })
 

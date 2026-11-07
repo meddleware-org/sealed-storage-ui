@@ -13,7 +13,7 @@ export const MAX_DISCOVERED = 200
  *
  * Seal gives confidentiality, not authenticity: anyone can seal content to a gate and publish a
  * pointer for it, and a pass holder decrypts it successfully. So by default only the gate
- * operator's pointers are listed (`gateOperators`); `includeOthers` lists every publisher's, for the
+ * gate owner's pointers are listed (`gateOperators`); `includeOthers` lists every publisher's, for the
  * view to label as unverified.
  */
 export async function discoverSealedContent(
