@@ -699,7 +699,7 @@ suite is hermetic. `node-ci.yml` runs it, and both release workflows call that w
 - [x] storage lifetime shown and an extension path stated — Confirm step, result with the end epoch, trust panel, epochs validated 1..53 (F12, 0.0.38)
 - [x] CSP and HSTS on the one hosting path (B.VUE-1)
 - [ ] registry credential inventory and rotation (F19) — `OPERATOR_TASKS.md` "Image registry credentials"
-- [ ] external review — maintainer item (`OPERATOR_TASKS.md` "Funding, grants and an external audit")
+- [ ] external review (ADR-0009 gate G4: not a launch gate; covered by redeploy and the audit pass) — maintainer item (`OPERATOR_TASKS.md` "Funding, grants and an external audit")
 
 ## Cross-project themes
 
