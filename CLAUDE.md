@@ -54,7 +54,7 @@ and later decrypt it if the on-chain policy allows.
 | `src/components/EncryptPanel.vue`, `DecryptPanel.vue`, `UnlockPanel.vue` | One panel per tab (the wizard steps of each). Re-sealing is part of Decrypt; its result is handed to the view, which shows it on the Encrypt tab |
 | `src/components/ConfirmSummary.vue`, `ManifestResult.vue`, `GateIdPicker.vue`, `PolicyField.vue` | The Confirm step (and the gate owner read), the manifest + lifetime + publish, a gate id (picker or typed), one policy field by kind |
 | `src/index.ts` | Library entry — exports `SealedStorageView` for the dashboard to render inline |
-| `src/App.vue` | Standalone shell only: `AppToolShell` (title, docs/dev links) with the network badge in its `actions` slot, around `<SealedStorageView>` |
+| `src/App.vue` | Standalone shell only: `AppToolShell` (title and the company mark, docs/dev links) with the network badge in its `actions` slot, around `<SealedStorageView>` |
 | `src/e2e.ts`, `src/e2e-data.ts`, `src/e2e-controller.ts` | End-to-end build only (`--mode e2e`): the mock wallet and a stub chain with two gates; the Seal controller is swapped for a stand-in by a Vite alias (`vite.config.ts`), because sealing for real needs a live committee. `main.ts` loads `e2e.ts` behind two static conditions, so no other build contains any of it |
 
 ## End-to-end build
@@ -66,7 +66,7 @@ publisher and aggregator in the page. So every step of every tab is checked and 
 
 ## Shared tooling
 
-`@meddleware/frontend-config` supplies the Vite and Vitest configuration (`meddlewareApp`, `vueTestConfig`), the tsconfig base, and the `mw-*` bins: `mw-audit-gate`, `mw-third-party-licenses`, `mw-check-csp-inline` (`npm run check:csp`, also in the Dockerfile) and `mw-sync` (`npx mw-sync --check` in CI keeps dependabot.yml, .dockerignore, the postcss/stylelint configs, the audit allowlist and the Dockerfile CSP equal to the `chain` profile; `--write` repairs them). The `"meddleware"` key in package.json declares the kind, CSP profile and Lighthouse use. The only app-specific part of `vite.config.ts` is the e2e stand-in alias for the Seal controller (mode **and** flag).
+`@meddleware/frontend-config` supplies the Vite and Vitest configuration (`meddlewareApp`, `vueTestConfig`), the tsconfig base, and the `mw-*` bins: `mw-audit-gate`, `mw-third-party-licenses`, `mw-check-csp-inline` (`npm run check:csp`, also in the Dockerfile) and `mw-sync` (`npx mw-sync --check` in CI keeps dependabot.yml, .dockerignore, the postcss/stylelint configs, the audit allowlist and the Dockerfile CSP equal to the `chain` profile; `--write` repairs them). The `"meddleware"` key in package.json declares the kind, CSP profile and Lighthouse use. `meddlewareApp({ name: 'Sealed Storage' })` also emits the brand icon set (favicon, apple-touch-icon, 192/512 icons, `site.webmanifest`) and injects the links, so the app keeps no `public/favicon.*` and no icon `<link>` (`mw-sync --check` fails on the former); `tests/dist.test.ts` (run in CI after the build with `REQUIRE_DIST=1`) checks the icon set, that no font file, font host or third-party load is in `dist/`, and that every origin named is this site, an explorer or a Sui/Seal/Walrus endpoint. The only app-specific part of `vite.config.ts` is the e2e stand-in alias for the Seal controller (mode **and** flag).
 
 ## Dual app + library
 

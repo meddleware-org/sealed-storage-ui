@@ -2,6 +2,7 @@
 // the documentation links and the copyright in the footer.
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 
 vi.mock('../src/components/SealedStorageView.vue', () => ({ default: { template: '<p class="view">view</p>' } }))
 vi.mock('../src/config.js', () => ({ network: { value: 'testnet' } }))
@@ -20,7 +21,22 @@ describe('App', () => {
     expect(w.find('footer').text()).toContain('Meddleware')
   })
 
+  it('shows the company mark beside the name in the header, hidden from assistive technology', () => {
+    const header = mount(App).get('header')
+    const mark = header.get('svg.mw-brand-mark')
+    expect(mark.attributes('aria-hidden')).toBe('true')
+    expect(header.text()).toContain('Sealed Storage')
+  })
+
   it('shows the network in the header', () => {
     expect(mount(App).find('header').text()).toContain('testnet')
+  })
+})
+
+describe('the brand', () => {
+  it('keeps no icon of its own: the favicon set comes from the shared brand icons', () => {
+    expect(existsSync('public/favicon.svg')).toBe(false)
+    expect(readdirSync('public').filter((f) => /favicon|apple-touch|icon-/.test(f))).toEqual([])
+    expect(readFileSync('index.html', 'utf8')).not.toMatch(/rel="(?:shortcut )?icon"|apple-touch-icon/)
   })
 })

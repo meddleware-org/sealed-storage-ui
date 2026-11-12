@@ -8,6 +8,9 @@ on:
   # The release workflow runs the same checks on the tagged commit.
   workflow_call:
 
+env:
+  DO_NOT_TRACK: "1"
+
 permissions:
   contents: read
 
@@ -49,6 +52,11 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Built site (icon set once per page, no third-party loads)
+        run: npx vitest run tests/dist.test.ts
+        env:
+          REQUIRE_DIST: '1'
 
       - name: Inline scripts are covered by the CSP
         run: npm run check:csp

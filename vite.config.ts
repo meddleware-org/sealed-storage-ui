@@ -14,5 +14,5 @@ const standIn = fileURLToPath(new URL('./src/e2e-controller.ts', import.meta.url
 export default defineConfig((env) => {
   const alias: Record<string, string> =
     env.mode === 'e2e' && process.env.VITE_E2E === '1' ? { '@meddleware/sealed-storage-client/controller': standIn } : {}
-  return meddlewareApp({ plugins: [vue()], config: { resolve: { alias } } })(env)
+  return meddlewareApp({ plugins: [vue()], name: 'Sealed Storage', config: { resolve: { alias } } })(env)
 })
