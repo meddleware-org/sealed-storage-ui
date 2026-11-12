@@ -58,7 +58,7 @@
     "@meddleware/sealed-storage-client": "^0.0.26",
     "@meddleware/ui": "^0.1.40",
     "@meddleware/walrus-storage-client": "^0.0.34",
-    "@meddleware/web-utils": "^0.0.3",
+    "@meddleware/web-utils": "^0.0.4",
     "@mysten/sui": "^2.33.2",
     "@mysten/wallet-standard": "^0.21.0",
     "vue": "^3.5.43"
@@ -67,10 +67,10 @@
     "@meddleware/wallet-adapter": ">=0.0.22 <0.2.0"
   },
   "devDependencies": {
-    "@lhci/cli": "^0.15.1",
-    "@meddleware/frontend-config": "^0.0.7",
+    "@lhci/cli": "^0.16.0",
+    "@meddleware/frontend-config": "^0.0.8",
     "@meddleware/wallet-adapter": "^0.0.22",
-    "@playwright/test": "~1.64.1",
+    "@playwright/test": "~1.65.0",
     "@types/node": "~26.6.5",
     "@vitejs/plugin-vue": "^6.0.9",
     "@vue/eslint-config-typescript": "^14.9.0",
