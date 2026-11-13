@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { SEAL_COMMITTEES } from '@meddleware/sealed-storage-client/deployments'
 
 // A recording SealController: the test sees which servers each instance targets and what it was
 // asked to decrypt or encrypt. The header helpers are driven per test.
@@ -31,7 +32,8 @@ vi.mock('@meddleware/sealed-storage-client/controller', () => ({
 }))
 vi.mock('../src/wallet.js', () => ({ getSuiClient: () => ({}) }))
 
-const COMMITTEE = '0xb012378c9f3799fb5b1a7083da74a4069e3c3f1c93de0b27212a5799ce1e1e98'
+// The testnet committee's aggregator entry: its id is the client's record, typed nowhere else (FU-0062).
+const COMMITTEE = SEAL_COMMITTEES.testnet.servers[0].objectId
 const OLD_OPEN = `0x${'ab'.repeat(32)}`
 const signer = { address: '0xabc', signPersonalMessage: vi.fn(async () => ({ signature: 's' })) }
 

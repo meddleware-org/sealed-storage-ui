@@ -40,7 +40,7 @@ and later decrypt it if the on-chain policy allows.
 
 | File | Purpose |
 | --- | --- |
-| `src/config.ts` | `network` and `explorerNetwork` (both wallet-adapter's `useNetwork()`); `sealConfig(net)` / `activeConfig`: ids from `deployments`, committee + threshold + Walrus endpoints from `VITE_*_{NET}`, `problem` (plain words for a person) and `problemCause` (the technical cause, `configCause`, logged with `console.error`) when sealing is unavailable |
+| `src/config.ts` | `network` and `explorerNetwork` (both wallet-adapter's `useNetwork()`); `sealConfig(net)` / `activeConfig`: ids from `deployments`, the testnet committee (ids, weights, aggregator, threshold) from sealed-storage-client's `SEAL_COMMITTEES` (never typed here, FU-0062; the mainnet providers' ids stay in `SERVER_DEFAULTS` until they move into `SEAL_COMMITTEES.mainnet` at the mainnet publication), `VITE_*_{NET}` overrides + Walrus endpoints, `problem` (plain words for a person) and `problemCause` (the technical cause, `configCause`, logged with `console.error`) when sealing is unavailable |
 | `src/availability.ts` | The two messages a person reads when a network cannot be used (`notAvailableOn`: no recorded deployment; `notAvailableNow`: a setting the person cannot change). The networks to switch to come from the `deployments` records |
 | `src/seal.ts` | Per-network `registry` + lazy `SealController` (`originalId` / `publishedAt` from `deployments`) |
 | `src/sealed-content.ts` | `discoverSealedContent` over sealed-storage-client `listSealedContent` (optional indexer) |
@@ -81,7 +81,7 @@ The network is wallet-adapter's shared runtime selector (the standalone `main.ts
 `VITE_NETWORK`). Sealing is enabled while `activeConfig.problem` is null, which needs:
 
 - a `sealed_storage` deployment recorded for the network (in sealed-storage-client's `deployments`);
-- key servers (defaults on testnet and mainnet, or `VITE_SEAL_SERVER_OBJECT_IDS_{NET}`);
+- key servers (testnet: the client's `SEAL_COMMITTEES.testnet`; mainnet: this app's defaults until the client's record has them; or `VITE_SEAL_SERVER_OBJECT_IDS_{NET}`);
 - a valid threshold;
 - a Walrus publisher (sealing stores the ciphertext).
 

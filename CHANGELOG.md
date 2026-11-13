@@ -3,6 +3,14 @@
 All notable changes to `@meddleware/sealed-storage-ui` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.0.50] - 2026-11-13
+
+### Changed
+
+- The testnet key-server committee (the three object ids, their weights, the aggregator URL and threshold 2) is read from `SEAL_COMMITTEES.testnet` of `@meddleware/sealed-storage-client` ^0.0.27 (`sealCommittee`, `committeeServerConfigs`) instead of being typed in `src/config.ts` (FU-0062); behaviour is identical, and a test proves the app's testnet configuration equals the client's record. The mainnet providers' ids (Overclock, NodeInfra, H2O Nodes) stay in the app's defaults, marked to move into `SEAL_COMMITTEES.mainnet` at the mainnet publication.
+- Takes `@meddleware/ui` ^0.1.43, `@meddleware/frontend-config` ^0.0.10 (the audit allowlist template is now empty: `lhci` 0.16.1 dropped `extract-zip`) and `@meddleware/wallet-adapter` ^0.0.23 (dev).
+- Wording (D117, FU-0064 item 3): checked that no `VITE_` name, "operator" or `MeddleWare` reaches a person; new test mounts the view with a real configuration fault and asserts the rendered text is "Sealed Storage is not available here right now. Try again later." with no variable name, and that the technical detail went to `console.error`.
+
 ## [0.0.49] - 2026-11-12
 
 ### Changed

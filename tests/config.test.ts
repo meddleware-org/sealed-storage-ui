@@ -36,6 +36,28 @@ describe('sealConfig', () => {
     expect(c.problem).toBeNull()
   })
 
+  it("takes the testnet committee from sealed-storage-client's SEAL_COMMITTEES, typing none of it (FU-0062)", async () => {
+    const { sealConfig, aggregatorUrlFor } = await import('../src/config.js')
+    const { SEAL_COMMITTEES, committeeServerConfigs } = await import('@meddleware/sealed-storage-client')
+    const record = SEAL_COMMITTEES.testnet
+    const c = sealConfig('testnet', {})
+    expect(c.servers).toEqual(committeeServerConfigs(record))
+    expect(c.servers.map((x) => x.objectId)).toEqual(record.servers.map((x) => x.objectId))
+    expect(c.servers.map((x) => x.weight)).toEqual(record.servers.map((x) => x.weight))
+    expect(c.threshold).toBe(record.threshold)
+    expect(c.threshold).toBe(2)
+    // the aggregator of the committee entry, and no other server has one
+    expect(c.servers.map((x) => x.aggregatorUrl)).toEqual(record.servers.map((x) => x.url))
+    for (const s of record.servers) expect(aggregatorUrlFor('testnet', s.objectId, {})).toBe(s.url)
+    expect(aggregatorUrlFor('testnet', record.servers[0].objectId.toUpperCase().replace('0X', '0x'), {})).toBe(record.servers[0].url)
+  })
+
+  it('keeps the build\'s aggregator URLs by position over the committee ids', async () => {
+    const { sealConfig } = await import('../src/config.js')
+    const c = sealConfig('testnet', { VITE_SEAL_AGGREGATOR_URLS_TESTNET: 'https://a.example,https://b.example' })
+    expect(c.servers.map((x) => x.aggregatorUrl)).toEqual(['https://a.example', 'https://b.example', undefined])
+  })
+
   it('says plainly that a network without a recorded sealed_storage deployment is not available, and offers the networks that have one', async () => {
     const { sealConfig } = await import('../src/config.js')
     const { SEAL_POLICIES_DEPLOYMENTS } = await import('@meddleware/sealed-storage-client/deployments')

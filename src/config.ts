@@ -7,7 +7,7 @@
 // A configuration fault is shown to a person as a plain "not available right now" (`./availability.js`); the technical cause (which
 // variable) is `problemCause`, logged to the console for the developer.
 import { computed, watch } from 'vue'
-import type { KeyServerConfig } from '@meddleware/sealed-storage-client'
+import { committeeServerConfigs, sealCommittee, type KeyServerConfig } from '@meddleware/sealed-storage-client'
 import { SEAL_POLICIES_DEPLOYMENTS, type SealPoliciesDeployment } from '@meddleware/sealed-storage-client/deployments'
 import { ACCESS_GATE_DEPLOYMENTS, type AccessGateDeployment } from '@meddleware/access-gate-client/deployments'
 import { useNetwork } from '@meddleware/wallet-adapter'
@@ -33,30 +33,31 @@ function csv(v: string | undefined): string[] {
   return (v ?? '').split(',').map((s) => s.trim()).filter(Boolean)
 }
 
+/** A network's default key-server committee: the servers (with their aggregator URLs) and the threshold. */
+interface ServerDefaults {
+  servers: readonly KeyServerConfig[]
+  threshold: number
+}
+
 /**
  * Key-server defaults (workspace ADR-0002). Testnet: Mysten's decentralized committee (via its
- * aggregator) plus Mysten's two Open-mode servers, threshold 2. Mainnet (D24): three keyless
- * Open-mode servers run by independent operators of key servers — Overclock, NodeInfra, H2O Nodes — at
- * threshold 2, so no single one can decrypt and one may be down. No server needs an API key, so none is ever
- * configured in the bundle. A committee behind an aggregator counts as ONE server.
+ * aggregator) plus Mysten's two Open-mode servers, threshold 2 — read from sealed-storage-client's
+ * `SEAL_COMMITTEES.testnet`, the one record of those ids (FU-0062), not typed here. Mainnet (D24):
+ * three keyless Open-mode servers run by independent providers of key servers — Overclock, NodeInfra,
+ * H2O Nodes — at threshold 2, so no single one can decrypt and one may be down. No server needs an
+ * API key, so none is ever configured in the bundle. A committee behind an aggregator counts as ONE server.
  */
-const SERVER_DEFAULTS: Record<string, { ids: string[]; aggs: string[]; threshold: number }> = {
-  testnet: {
-    ids: [
-      '0xb012378c9f3799fb5b1a7083da74a4069e3c3f1c93de0b27212a5799ce1e1e98',
-      '0x73d05d62c18d9374e3ea529e8e0ed6161da1a141a94d3f76ae3fe4e99356db75',
-      '0xf5d14a81a982144ae441cd7d64b09027f116a468bd36e7eca494f750591623c8',
-    ],
-    aggs: ['https://seal-aggregator-testnet.mystenlabs.com'],
-    threshold: 2,
-  },
+const testnetCommittee = sealCommittee('testnet')
+const SERVER_DEFAULTS: Record<string, ServerDefaults> = {
+  testnet: { servers: committeeServerConfigs(testnetCommittee), threshold: testnetCommittee.threshold },
+  // TODO(FU-0062): these ids move into sealed-storage-client's `SEAL_COMMITTEES.mainnet` at the mainnet publication (the client's
+  // mainnet entry is `undefined` until then); then this entry is replaced by `sealCommittee('mainnet')` like testnet.
   mainnet: {
-    ids: [
-      '0x145540d931f182fef76467dd8074c9839aea126852d90d18e1556fcbbd1208b6', // Overclock (Open)
-      '0x1afb3a57211ceff8f6781757821847e3ddae73f64e78ec8cd9349914ad985475', // NodeInfra (Open)
-      '0x4a65b4ff7ba8f4b538895ee35959f982a95f0db7e2a202ec989d261ea927286a', // H2O Nodes (Open)
+    servers: [
+      { objectId: '0x145540d931f182fef76467dd8074c9839aea126852d90d18e1556fcbbd1208b6', weight: 1 }, // Overclock (Open)
+      { objectId: '0x1afb3a57211ceff8f6781757821847e3ddae73f64e78ec8cd9349914ad985475', weight: 1 }, // NodeInfra (Open)
+      { objectId: '0x4a65b4ff7ba8f4b538895ee35959f982a95f0db7e2a202ec989d261ea927286a', weight: 1 }, // H2O Nodes (Open)
     ],
-    aggs: [],
     threshold: 2,
   },
 }
@@ -173,10 +174,14 @@ export function sealConfig(net: string, envSource: EnvSource = env): SealConfig 
   const defaults = own(SERVER_DEFAULTS, net)
   const envIds = csv(netEnv('VITE_SEAL_SERVER_OBJECT_IDS'))
   const envAggs = csv(netEnv('VITE_SEAL_AGGREGATOR_URLS'))
-  const ids = envIds.length ? envIds : (defaults?.ids ?? [])
-  const aggs = envAggs.length ? envAggs : (defaults?.aggs ?? [])
   // Never an API key: a key in a VITE_* var ships in the public bundle (sealed-storage-ui audit I5).
-  const servers: KeyServerConfig[] = ids.map((objectId, i) => ({ objectId, weight: 1, aggregatorUrl: aggs[i] }))
+  // Ids from the build replace the defaults (weight 1 each); aggregator URLs from the build replace the default ones, by position.
+  const baseServers: readonly KeyServerConfig[] = envIds.length ? envIds.map((objectId) => ({ objectId, weight: 1 })) : (defaults?.servers ?? [])
+  const servers: KeyServerConfig[] = baseServers.map((s, i) => ({
+    objectId: s.objectId,
+    weight: s.weight,
+    aggregatorUrl: envAggs.length ? envAggs[i] : s.aggregatorUrl,
+  }))
   const rawThreshold = netEnv('VITE_SEAL_THRESHOLD')
   const threshold = rawThreshold ? Number(rawThreshold) : (defaults?.threshold ?? 1)
 
@@ -217,9 +222,7 @@ export function aggregatorUrlFor(net: string, objectId: string, envSource: EnvSo
   const norm = (id: string) => `0x${id.toLowerCase().replace(/^0x/, '').padStart(64, '0')}`
   const fromConfig = sealConfig(net, envSource).servers.find((s) => norm(s.objectId) === norm(objectId))
   if (fromConfig?.aggregatorUrl) return fromConfig.aggregatorUrl
-  const d = own(SERVER_DEFAULTS, net)
-  const i = d ? d.ids.findIndex((id) => norm(id) === norm(objectId)) : -1
-  return i >= 0 ? d?.aggs[i] : undefined
+  return own(SERVER_DEFAULTS, net)?.servers.find((s) => norm(s.objectId) === norm(objectId))?.aggregatorUrl
 }
 
 /** The configuration for the active network. */

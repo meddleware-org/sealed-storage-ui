@@ -34,6 +34,8 @@ export interface Setup {
   /** The page's query string, for the `?gate=` link. */
   search?: string
   problem?: string | null
+  /** Use the real `config.ts` (a test sets its environment by mocking `withRuntimeEnv`) instead of the mock: `network`, `problem` and `custody` are then ignored. */
+  realConfig?: boolean
   custody?: 'independent' | 'operator'
   providers?: unknown[]
   /** Accept any pasted manifest as valid (the schema guard is tested on its own). */
@@ -62,7 +64,8 @@ export async function mountView(setup: Setup = { network: 'testnet', address: '0
   const discoverSealedContent = vi.fn()
   const signAndExecute = vi.fn()
   const resealCiphertext = vi.fn()
-  vi.doMock('../../src/config.js', () => ({
+  if (setup.realConfig) vi.doMock('../../src/config.js', async (importOriginal) => importOriginal())
+  else vi.doMock('../../src/config.js', () => ({
     network,
     explorerNetwork: computed(() => 'testnet'),
     activeConfig: computed(() => cfgFor(network.value)),
