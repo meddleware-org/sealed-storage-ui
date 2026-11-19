@@ -106,7 +106,8 @@
     "js-beautify": {
       "editorconfig": "^4.0.1",
       "glob": "^14.0.6"
-    }
+    },
+    "chrome-launcher": "^1.2.3"
   },
   "meddleware": {
     "kind": "app",
