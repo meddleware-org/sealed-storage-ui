@@ -1,6 +1,6 @@
 {
   "name": "@meddleware/sealed-storage-ui",
-  "version": "0.0.50",
+  "version": "0.0.51",
   "homepage": "https://docs.meddleware.co.uk/blockchain/sui/sealed-storage/",
   "description": "Standalone Vue 3 SPA for Sealed Storage — client-side Seal encryption + access-gated, decentralised Walrus storage on Sui.",
   "author": "Meddleware <dev@meddleware.co.uk>",
