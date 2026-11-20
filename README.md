@@ -65,3 +65,7 @@ move off a provider that withdraws while the others still answer.
 ## License
 
 BSD Zero Clause License (`0BSD`). See [LICENSE](LICENSE).
+
+## Open standards
+
+What this project speaks, what is planned and where you can extend it: [docs/INTEROP.md](docs/INTEROP.md).

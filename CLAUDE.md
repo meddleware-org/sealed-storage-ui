@@ -154,3 +154,7 @@ build. For local dev: `cd ../sealed-storage-client && npm link`, then `npm link 
 - Deploying against a team's **own `sealed_storage` package + key-server committee**: the
   `VITE_SEAL_*` build args (committee ids, aggregator URLs, threshold) and the published
   `deployments` the package ids come from; branding via design-tokens + `AppHeader`.
+
+## Interoperability
+
+- [docs/INTEROP.md](docs/INTEROP.md): the standards this project speaks, what is planned, where to extend it, and what proves each claim.
