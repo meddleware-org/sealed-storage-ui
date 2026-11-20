@@ -3,7 +3,7 @@
 All notable changes to `@meddleware/sealed-storage-ui` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.0.53] - 2026-11-20
 
 - Wording (copy standard, 2026-11-20): "Your pass ID" (not "pass NFT ID") and its error message; new page description.
 - CI: `HOME=/root` is set on the browser-test command only, not the whole job, so the runner no longer warns that it cannot read
