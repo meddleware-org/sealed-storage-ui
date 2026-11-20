@@ -66,7 +66,7 @@ function unlock(item: SealedContentPointer): Promise<void> {
   return op.run(async ({ isCurrent, config }) => {
     const owner = account.value?.address
     if (!owner) throw new Error('Connect your wallet to decrypt.')
-    if (!nftId.value) throw new Error('Enter your pass NFT id.')
+    if (!nftId.value) throw new Error('Enter your pass ID.')
     op.status.value = 'Fetching ciphertext from Walrus…'
     const ciphertext = await readBlob(item.blobId, config)
     if (!isCurrent()) return
@@ -108,7 +108,7 @@ function unlock(item: SealedContentPointer): Promise<void> {
   <template v-else>
     <UiEmptyState v-if="!discovered.length">No sealed content found for this gate.</UiEmptyState>
     <template v-else>
-      <UiTextField id="seal-unlock-nft" v-model="nftId" label="Your pass NFT ID *" placeholder="0x… your AccessNFT for this gate" required />
+      <UiTextField id="seal-unlock-nft" v-model="nftId" label="Your pass ID *" placeholder="0x… the ID of your pass for this gate" required />
       <UiCheckField v-model="soulbound" label="Pass is soulbound" />
       <ul class="found">
         <UiCard v-for="item in discovered" :key="item.contentId" as="li" plain :level="3" :title="item.label || '(untitled)'">
