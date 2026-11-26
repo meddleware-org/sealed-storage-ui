@@ -3,11 +3,15 @@ import { computed } from 'vue'
 
 // Discovery delegates to sealed-storage-client's listSealedContent (tested there); this checks the wrapper
 // passes the active deployment, the gate, the cap and the optional indexer.
-const { listSealedContent, gateOperators } = vi.hoisted(() => ({ listSealedContent: vi.fn(), gateOperators: vi.fn(async () => ['0xop']) }))
+const { listSealedContent, gateOperators, isEventHistoryPruned } = vi.hoisted(() => ({
+  listSealedContent: vi.fn(),
+  gateOperators: vi.fn(async () => ['0xop']),
+  isEventHistoryPruned: vi.fn((e: unknown) => e instanceof Error && e.name === 'EventHistoryPrunedError'),
+}))
 
 async function load(cfg: Record<string, unknown>, indexer = '') {
   vi.resetModules()
-  vi.doMock('@meddleware/sealed-storage-client', () => ({ listSealedContent, gateOperators }))
+  vi.doMock('@meddleware/sealed-storage-client', () => ({ listSealedContent, gateOperators, isEventHistoryPruned }))
   vi.doMock('../src/wallet.js', () => ({ getSuiClient: () => ({ client: true }) }))
   vi.doMock('../src/config.js', () => ({ activeConfig: computed(() => cfg), INDEXER_URL: indexer }))
   return import('../src/sealed-content.js')
@@ -37,6 +41,17 @@ describe('discoverSealedContent', () => {
     await discoverSealedContent('0xgate', { includeOthers: true })
     expect(gateOperators).not.toHaveBeenCalled()
     expect(listSealedContent.mock.calls[0][1]).not.toHaveProperty('publishers')
+  })
+
+  it('says in plain words that older content cannot be listed when the node has pruned the history, and logs the node\'s answer', async () => {
+    const pruned = Object.assign(new Error('The network node no longer keeps events this old.'), { name: 'EventHistoryPrunedError', cause: new Error('below earliest available') })
+    listSealedContent.mockRejectedValueOnce(pruned)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { discoverSealedContent, HISTORY_PRUNED } = await load({ network: 'testnet', seal: { originalId: '0x42', publishedAt: '0x43' } })
+    await expect(discoverSealedContent('0xgate')).rejects.toThrow(HISTORY_PRUNED)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(HISTORY_PRUNED).not.toMatch(/VITE_|operator|deployment|indexer|configur|node\b/i)
+    warn.mockRestore()
   })
 
   it('fails closed when the operators cannot be resolved', async () => {

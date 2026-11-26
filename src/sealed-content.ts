@@ -1,9 +1,12 @@
 // Discover on-chain SealedContent pointers for a gate with sealed-storage-client's `listSealedContent`
 // (exact event type at the deployment's original id; BCS-decoded). Reads the read-indexer when
 // VITE_INDEXER_URL is set — display data only, falling back to the full node.
-import { gateOperators, listSealedContent, type SealedContentPointer } from '@meddleware/sealed-storage-client'
+import { gateOperators, isEventHistoryPruned, listSealedContent, type SealedContentPointer } from '@meddleware/sealed-storage-client'
 import { getSuiClient } from './wallet.js'
 import { activeConfig, INDEXER_URL, type SealConfig } from './config.js'
+
+/** What the person reads when the network no longer keeps events this old and the index could not supply them. */
+export const HISTORY_PRUNED = 'Older sealed content cannot be listed right now, so some may be missing. Try again later.'
 
 /** Most pointers listed for one gate. */
 export const MAX_DISCOVERED = 200
@@ -26,14 +29,24 @@ export async function discoverSealedContent(
   const publishers = opts.includeOthers
     ? undefined
     : await gateOperators(client, gateId, cfg.accessGateOriginalId)
-  const page = await listSealedContent(client, {
-    originalId: cfg.seal.originalId,
-    gateId,
-    limit: MAX_DISCOVERED,
-    indexer: INDEXER_URL ? { url: INDEXER_URL, network: cfg.network } : undefined,
-    ...(publishers ? { publishers } : {}),
-  })
-  return page.pointers
+  try {
+    const page = await listSealedContent(client, {
+      originalId: cfg.seal.originalId,
+      gateId,
+      limit: MAX_DISCOVERED,
+      indexer: INDEXER_URL ? { url: INDEXER_URL, network: cfg.network } : undefined,
+      ...(publishers ? { publishers } : {}),
+    })
+    return page.pointers
+  } catch (e) {
+    // A node that has pruned the history asked for is a known condition: the person reads plain words, and the node's answer (the cause)
+    // goes to the console.
+    if (isEventHistoryPruned(e)) {
+      console.warn('sealed-storage-ui: the node has pruned the event history', (e as { cause?: unknown }).cause ?? e)
+      throw new Error(HISTORY_PRUNED, { cause: e })
+    }
+    throw e
+  }
 }
 
 /**

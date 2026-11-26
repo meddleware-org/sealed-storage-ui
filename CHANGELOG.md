@@ -3,6 +3,10 @@
 All notable changes to `@meddleware/sealed-storage-ui` are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+- Searching for sealed content when a node has pruned the history asked for says in plain words that older content cannot be listed right now (the node's answer is written to the console once). Depends on `@meddleware/access-gate-client` ^0.0.14 and `@meddleware/sealed-storage-client` ^0.0.28.
+
 ## [0.0.53] - 2026-11-20
 
 - Wording (copy standard, 2026-11-20): "Your pass ID" (not "pass NFT ID") and its error message; new page description.
