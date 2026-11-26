@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 // F11: the network can be switched while the original servers' wallet prompt is open. The re-seal
 // then must not encrypt the decrypted plaintext for the other network's key servers.
+// The test switches the network from inside the mocked decrypt, and counts how many encryptions happen.
 const { switchNetwork, encrypted } = vi.hoisted(() => ({ switchNetwork: { fn: () => {} }, encrypted: { count: 0 } }))
 
 vi.mock('@meddleware/sealed-storage-client/controller', () => ({
@@ -35,7 +36,9 @@ vi.mock('../src/config.js', () => ({
   aggregatorUrlFor: () => undefined,
 }))
 
+// After the wallet prompt the network is checked again: nothing is sealed or stored on another network.
 describe('resealCiphertext across a network switch', () => {
+  // Refuses to encrypt for the new network after the decrypt prompt.
   it('refuses to encrypt for the new network after the decrypt prompt', async () => {
     const { resealCiphertext } = await import('../src/seal.js')
     switchNetwork.fn = () => {

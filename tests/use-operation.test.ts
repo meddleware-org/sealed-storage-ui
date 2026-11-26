@@ -2,8 +2,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { computed, nextTick, ref } from 'vue'
 
+// Start every test from fresh modules.
 afterEach(() => vi.resetModules())
 
+/** Load a fresh operation against a network and an account the test can switch. */
 async function operation() {
   vi.resetModules()
   const network = ref('testnet')
@@ -16,13 +18,16 @@ async function operation() {
   return { network, address, op: createOperation(address) }
 }
 
+/** A gate the test opens by hand, to hold a task in flight. */
 function gate() {
   let open!: () => void
   const closed = new Promise<void>((resolve) => (open = resolve))
   return { closed, open }
 }
 
+// One operation at a time, bound to the network and account it started on.
 describe('createOperation', () => {
+  // Is busy while a task runs, and gives it the configuration it started with.
   it('is busy while a task runs, and gives it the configuration it started with', async () => {
     const { op, network } = await operation()
     const g = gate()
@@ -38,6 +43,7 @@ describe('createOperation', () => {
     expect(seen).toBe('testnet')
   })
 
+  // Shows a failure the task throws, and clears it when the next one starts.
   it('shows a failure the task throws, and clears it when the next one starts', async () => {
     const { op } = await operation()
     await op.run(async () => {
@@ -52,6 +58,7 @@ describe('createOperation', () => {
     await next
   })
 
+  // Discards a task when the network switches: no failure, not busy, and it says so.
   it('discards a task when the network switches: no failure, not busy, and it says so', async () => {
     const { op, network } = await operation()
     const g = gate()
@@ -68,6 +75,7 @@ describe('createOperation', () => {
     expect(op.error.value).toBeNull()
   })
 
+  // Discards a task when the account switches or disconnects.
   it('discards a task when the account switches or disconnects', async () => {
     const { op, address } = await operation()
     const g = gate()
@@ -83,6 +91,7 @@ describe('createOperation', () => {
     expect(current).toBe(false)
   })
 
+  // Does not say anything was discarded when nothing was running.
   it('does not say anything was discarded when nothing was running', async () => {
     const { op, network } = await operation()
     op.status.value = 'something shown for testnet'
@@ -90,6 +99,7 @@ describe('createOperation', () => {
     expect(op.status.value).toBeNull()
   })
 
+  // Lets a task begun after the switch finish normally.
   it('lets a task begun after the switch finish normally', async () => {
     const { op, network } = await operation()
     network.value = 'mainnet'

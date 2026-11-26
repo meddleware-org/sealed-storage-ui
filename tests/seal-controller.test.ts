@@ -11,7 +11,9 @@ vi.mock('@meddleware/sealed-storage-client/controller', () => ({
 }))
 vi.mock('../src/wallet.js', () => ({ getSuiClient: () => ({}) }))
 
+// The controller is built from the recorded deployment, the committee and the threshold.
 describe('getSealController', () => {
+  // Passes the deployment ids, including the PolicyConfig version gate.
   it('passes the deployment ids, including the PolicyConfig version gate', async () => {
     const { getSealController } = await import('../src/seal.js')
     const { activeConfig } = await import('../src/config.js')

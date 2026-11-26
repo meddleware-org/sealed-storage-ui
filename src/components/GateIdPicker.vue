@@ -5,6 +5,7 @@ import { computed } from 'vue'
 import { UiButton, UiLiveStatus, UiSelectField, UiTextField } from '@meddleware/ui'
 import type { FieldSuggestion } from '@meddleware/sealed-storage-client'
 
+// The component's inputs.
 const props = defineProps<{
   id: string
   label: string
@@ -14,15 +15,19 @@ const props = defineProps<{
   /** Shown in the empty text field. */
   placeholder?: string
 }>()
+// The gate id, and whether the person chose to type it.
 const model = defineModel<string>({ default: '' })
 const manual = defineModel<boolean>('manual', { default: false })
 
+// The picker's options, and whether the current value is not among them (a value from a link is shown as text, never hidden).
 const options = computed(() => props.suggestions.map((s) => [s.value, s.label] as const))
 const foreign = computed(() => model.value !== '' && !props.suggestions.some((s) => s.value === model.value))
+// Show the picker only when there are gates to pick, nothing is loading and the person has not chosen to type.
 const picker = computed(() => !props.loading && props.suggestions.length > 0 && !manual.value && !foreign.value)
 const canSwitch = computed(() => !props.loading && props.suggestions.length > 0)
 const text = computed(() => (props.required ? `${props.label} *` : props.label))
 
+/** switchTo(typed): change between picker and typing; the value is cleared so a stale id is never kept. */
 function switchTo(typed: boolean): void {
   manual.value = typed
   model.value = ''

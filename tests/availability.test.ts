@@ -1,12 +1,14 @@
 // What a person reads when Sealed Storage cannot be used: plain words, the networks to switch to taken from the deployment records.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+// Forget the mocked records between tests.
 afterEach(() => {
   vi.doUnmock('@meddleware/sealed-storage-client/deployments')
   vi.resetModules()
 })
 
 /** The availability messages as they read when the records hold exactly these networks. */
+/** withRecords(networks): load the messages against records that hold exactly these networks. */
 async function withRecords(networks: string[]) {
   vi.resetModules()
   vi.doMock('@meddleware/sealed-storage-client/deployments', () => ({
@@ -15,6 +17,7 @@ async function withRecords(networks: string[]) {
   return import('../src/availability.js')
 }
 
+// The messages name only networks the records list, and no setting.
 describe('availability messages', () => {
   it('offer the other network that has a recorded deployment', async () => {
     const m = await withRecords(['testnet'])

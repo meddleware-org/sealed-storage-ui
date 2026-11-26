@@ -1,19 +1,25 @@
+// The build configuration (src/config.ts): the Seal threshold rules, the per-network defaults and overrides, the Walrus lifetime, the technical causes of a
+// configuration fault (for the console) against the plain words a person reads, and what changes once mainnet has a recorded deployment.
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { thresholdError } from '../src/config.js'
 
+// A threshold must be an integer between 1 and the total server weight.
 describe('thresholdError', () => {
   const one = [{ weight: 1 }]
   const three = [{ weight: 1 }, { weight: 1 }, { weight: 1 }]
 
+  // Accepts a threshold within the total server weight.
   it('accepts a threshold within the total server weight', () => {
     expect(thresholdError(1, one)).toBeNull()
     expect(thresholdError(2, three)).toBeNull()
   })
 
+  // Rejects the old mainnet default of 5 against a single committee.
   it('rejects the old mainnet default of 5 against a single committee', () => {
     expect(thresholdError(5, one)).toMatch(/\[1, 1\]/)
   })
 
+  // Rejects zero, fractions and NaN.
   it('rejects zero, fractions and NaN', () => {
     expect(thresholdError(0, three)).not.toBeNull()
     expect(thresholdError(1.5, three)).not.toBeNull()
@@ -21,7 +27,9 @@ describe('thresholdError', () => {
   })
 })
 
+// What the configuration resolves to on each network, from the records, the defaults and the build settings.
 describe('sealConfig', () => {
+  // Takes the package ids from the deployments and the testnet committee defaults.
   it('takes the package ids from the deployments and the testnet committee defaults', async () => {
     const { sealConfig } = await import('../src/config.js')
     const { sealPoliciesDeployment } = await import('@meddleware/sealed-storage-client/deployments')
@@ -36,6 +44,7 @@ describe('sealConfig', () => {
     expect(c.problem).toBeNull()
   })
 
+  // Takes the testnet committee from sealed-storage-client's SEAL_COMMITTEES, typing none of it (FU-0062).
   it("takes the testnet committee from sealed-storage-client's SEAL_COMMITTEES, typing none of it (FU-0062)", async () => {
     const { sealConfig, aggregatorUrlFor } = await import('../src/config.js')
     const { SEAL_COMMITTEES, committeeServerConfigs } = await import('@meddleware/sealed-storage-client')
@@ -52,12 +61,14 @@ describe('sealConfig', () => {
     expect(aggregatorUrlFor('testnet', record.servers[0].objectId.toUpperCase().replace('0X', '0x'), {})).toBe(record.servers[0].url)
   })
 
+  // Keeps the build\.
   it('keeps the build\'s aggregator URLs by position over the committee ids', async () => {
     const { sealConfig } = await import('../src/config.js')
     const c = sealConfig('testnet', { VITE_SEAL_AGGREGATOR_URLS_TESTNET: 'https://a.example,https://b.example' })
     expect(c.servers.map((x) => x.aggregatorUrl)).toEqual(['https://a.example', 'https://b.example', undefined])
   })
 
+  // Says plainly that a network without a recorded sealed_storage deployment is not available, and offers the networks that have one.
   it('says plainly that a network without a recorded sealed_storage deployment is not available, and offers the networks that have one', async () => {
     const { sealConfig } = await import('../src/config.js')
     const { SEAL_POLICIES_DEPLOYMENTS } = await import('@meddleware/sealed-storage-client/deployments')
@@ -71,12 +82,14 @@ describe('sealConfig', () => {
     expect(c.walrusPublisher).toBe('') // no public mainnet publisher
   })
 
+  // Does not hide a missing deployment behind a bad setting.
   it('does not hide a missing deployment behind a bad setting', async () => {
     const { sealConfig } = await import('../src/config.js')
     const c = sealConfig('mainnet', { VITE_SEAL_THRESHOLD_MAINNET: '9', VITE_WALRUS_EPOCHS: 'many' })
     expect(c.problem).toBe('Sealed Storage is not available on mainnet. Switch to testnet.')
   })
 
+  // Reads per-network overrides of servers and threshold.
   it('reads per-network overrides of servers and threshold', async () => {
     const { sealConfig } = await import('../src/config.js')
     const c = sealConfig('testnet', {
@@ -93,6 +106,7 @@ describe('sealConfig', () => {
     expect(c.walrusPublisher).toBe('https://pub.example')
   })
 
+  // Reports a threshold the committee cannot meet: a person reads "not available right now", the cause names the variable.
   it('reports a threshold the committee cannot meet: a person reads "not available right now", the cause names the variable', async () => {
     const { sealConfig } = await import('../src/config.js')
     const c = sealConfig('testnet', { VITE_SEAL_THRESHOLD_TESTNET: '5' })
@@ -101,11 +115,13 @@ describe('sealConfig', () => {
     expect(c.problemCause).toMatch(/\[1, 3\].*VITE_SEAL_THRESHOLD_TESTNET/)
   })
 
+  // Reports a network with no deployment.
   it('reports a network with no deployment', async () => {
     const { sealConfig } = await import('../src/config.js')
     expect(sealConfig('localnet', {}).problem).toBe('Sealed Storage is not available on localnet. Switch to testnet.')
   })
 
+  // Mainnet defaults to three independent Open-mode servers at threshold 2 (ADR-0002, D24).
   it('mainnet defaults to three independent Open-mode servers at threshold 2 (ADR-0002, D24)', async () => {
     const { sealConfig } = await import('../src/config.js')
     const c = sealConfig('mainnet', {})
@@ -119,6 +135,7 @@ describe('sealConfig', () => {
     expect(c.custody).toBe('independent')
   })
 
+  // Never configures an API key, even when one is supplied (it would ship in the bundle).
   it('never configures an API key, even when one is supplied (it would ship in the bundle)', async () => {
     const { sealConfig } = await import('../src/config.js')
     for (const net of ['testnet', 'mainnet']) {
@@ -131,6 +148,7 @@ describe('sealConfig', () => {
     }
   })
 
+  // Reports operator custody and rejects an unknown custody value.
   it('reports operator custody and rejects an unknown custody value', async () => {
     const { sealConfig } = await import('../src/config.js')
     const op = sealConfig('testnet', { VITE_SEAL_KEY_CUSTODY_TESTNET: 'operator' })
@@ -144,6 +162,7 @@ describe('sealConfig', () => {
   })
 })
 
+// The Walrus lifetime: a default, and only integers from 1 to 53.
 describe('parseWalrusEpochs', () => {
   it('defaults to 5 when unset or empty (an unset Docker build arg is the empty string)', async () => {
     const { parseWalrusEpochs } = await import('../src/config.js')
@@ -165,6 +184,7 @@ describe('parseWalrusEpochs', () => {
   })
 })
 
+// The lifetime reaches the configuration, and a caller-supplied network name never resolves to a prototype member.
 describe('sealConfig lifetime and lookups', () => {
   it('carries the requested epochs, and reports an invalid value as a problem', async () => {
     const { sealConfig } = await import('../src/config.js')
@@ -188,6 +208,7 @@ describe('sealConfig lifetime and lookups', () => {
   })
 })
 
+// The technical cause names the setting behind each fault, in a fixed order, for the console.
 describe('configCause', () => {
   const ok = { network: 'mainnet', rawCustody: 'independent', epochsError: null, servers: [{ weight: 1 }, { weight: 1 }, { weight: 1 }], threshold: 2, walrusPublisher: 'https://pub.example' }
 
@@ -212,7 +233,9 @@ describe('configCause', () => {
   })
 })
 
+// The records decide, not this app: mainnet stays unavailable until a Walrus publisher is configured.
 describe('once mainnet has a recorded deployment (the records decide, not this app)', () => {
+  /** withMainnetRecord(): load the configuration against records that include a mainnet deployment. */
   async function withMainnetRecord() {
     vi.resetModules()
     vi.doMock('@meddleware/sealed-storage-client/deployments', () => ({

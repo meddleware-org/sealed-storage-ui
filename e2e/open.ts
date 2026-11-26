@@ -1,14 +1,21 @@
+// Helpers the Sealed Storage browser tests share: open the built app with the Walrus endpoints answered by the spec, and walk to each step.
 import type { Page } from '@playwright/test'
 import { offline } from '@meddleware/frontend-config/look'
 import { connectMockWallet } from '@meddleware/frontend-config/wallet'
 import { E2E_GATES } from '../src/e2e-data.js'
 
+/** What the specs expect of the Walrus endpoints, the stored blob and the stand-in seal. */
+/** The Walrus publisher the specs answer in place of the real one. */
 export const PUBLISHER = 'https://publisher.walrus-testnet.walrus.space'
+/** The Walrus aggregator the specs answer. */
 export const AGGREGATOR = 'https://aggregator.walrus-testnet.walrus.space'
+/** The blob id the stand-in publisher reports. */
 export const BLOB_ID = 'A'.repeat(43)
+/** The Blob object id the stand-in publisher reports. */
 export const BLOB_OBJECT = `0x${'b1'.repeat(32)}`
 /** The Seal identity the stand-in controller gives every ciphertext. */
 export const SEAL_ID = 'ab'.repeat(48)
+/** The end epoch the stand-in publisher reports. */
 export const END_EPOCH = 17
 
 /** A manifest as the Encrypt tab would have produced it for the studio gate. */
@@ -36,6 +43,7 @@ export async function launch(page: Page): Promise<void> {
   await page.getByRole('heading', { level: 2, name: 'Sealed Storage' }).waitFor()
 }
 
+/** The first screen, before a wallet is connected. */
 export const disconnected = launch
 
 /** Connected, on the Encrypt tab's first step. */

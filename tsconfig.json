@@ -1,4 +1,8 @@
+// TypeScript configuration for the app: the fleet's shared Vue application settings (strict mode, bundler module resolution, DOM types) with
+// this app's source folders. `npm run type-check` (vue-tsc) reads it; Vite does not type-check.
 {
+  // The shared base, from @meddleware/frontend-config.
   "extends": "@meddleware/frontend-config/tsconfig/vue-app.json",
+  // The app's own sources and its Vite configuration; the tests have their own checks.
   "include": ["src/**/*.ts", "src/**/*.vue", "src/**/*.d.ts", "vite.config.ts"]
 }

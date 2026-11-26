@@ -37,12 +37,15 @@ const COMMITTEE = SEAL_COMMITTEES.testnet.servers[0].objectId
 const OLD_OPEN = `0x${'ab'.repeat(32)}`
 const signer = { address: '0xabc', signPersonalMessage: vi.fn(async () => ({ signature: 's' })) }
 
+// Reset the recording controllers before every test.
 beforeEach(() => {
   instances.length = 0
   vi.resetModules()
 })
 
+// Already-current content is left alone; otherwise it is decrypted with the recorded servers and sealed again with the current ones.
 describe('resealCiphertext', () => {
+  // Does nothing when the content is already sealed to the current servers.
   it('does nothing when the content is already sealed to the current servers', async () => {
     sameServers.value = true
     info.value = { id: 'aa', packageId: '0x1', threshold: 2, servers: [] }

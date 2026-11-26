@@ -6,13 +6,16 @@ import { mountView } from './support/mount.js'
 // is the wallet-independent gating signal.
 const warnings = (w: Awaited<ReturnType<typeof mountView>>['wrapper']) => w.findAll('.mw-notice--warning')
 
+// Forget the mocked configuration between tests.
 afterEach(() => {
   vi.resetModules()
   vi.doUnmock('@meddleware/ui')
   vi.restoreAllMocks()
 })
 
+// The notices that say why sealing is unavailable, in words a person can act on, and that the rest of the page stays usable.
 describe('SealedStorageView network gating', () => {
+  // Shows why sealing is unavailable on the active network.
   it('shows why sealing is unavailable on the active network', async () => {
     const t = await mountView({
       network: 'mainnet',

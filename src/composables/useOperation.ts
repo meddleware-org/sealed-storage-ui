@@ -8,11 +8,16 @@ import { activeConfig, network, type SealConfig } from '../config.js'
 
 /** What a running task is told: whether it is still the current one, and the configuration it started with. */
 export interface OperationContext {
+  /** Whether this task is still the current operation (false once the network or the account changed, or a newer task began). */
   isCurrent(): boolean
   /** The network configuration at the moment the task began (a late call never reaches another network). */
   config: SealConfig
 }
 
+/**
+ * Create the operation state for one view: the busy flag, the progress text, the last error and `run`. It watches the network and the account,
+ * and discards the running task when either changes.
+ */
 export function createOperation(address: Ref<string | null | undefined>) {
   const busy = ref(false)
   /** Progress text (always shown, in a live region). */
@@ -56,14 +61,22 @@ export function createOperation(address: Ref<string | null | undefined>) {
   return { busy, status, error, run }
 }
 
+/** The operation state a view shares with its panels. */
 export type Operation = ReturnType<typeof createOperation>
 
+/** The injection key the view provides its operation under. */
 const KEY: InjectionKey<Operation> = Symbol('sealed-storage-operation')
 
+/** Make the operation available to every panel below the calling view. */
 export function provideOperation(operation: Operation): void {
   provide(KEY, operation)
 }
 
+/**
+ * The operation of the view above.
+ *
+ * @throws {Error} when no view above provides one.
+ */
 export function useOperation(): Operation {
   const operation = inject(KEY)
   if (!operation) throw new Error('useOperation() needs a SealedStorageView above it.')

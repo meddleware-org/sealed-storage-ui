@@ -1,9 +1,13 @@
+// The policy parameters an operation is built from (src/lib/params.ts): coercion by field kind, required fields refused in words, and the manifest's own
+// values overridden by what the person typed, without changing the manifest.
 import { describe, expect, it } from 'vitest'
 import type { FieldSpec } from '@meddleware/sealed-storage-client'
 import { coerce, decryptParams, encryptParams } from '../src/lib/params.js'
 
+// field(over): a field description, text and optional unless said otherwise.
 const field = (over: Partial<FieldSpec> & Pick<FieldSpec, 'name'>): FieldSpec => ({ label: over.name, kind: 'text', required: false, ...over })
 
+// Kinds: datetime to epoch milliseconds, checkbox to boolean, anything else to text.
 describe('coerce', () => {
   it('turns a datetime into epoch milliseconds, a checkbox into a boolean, anything else into text', () => {
     expect(coerce('datetime', '2030-01-02T03:04:05.000Z')).toBe(Date.parse('2030-01-02T03:04:05.000Z'))
@@ -14,6 +18,7 @@ describe('coerce', () => {
   })
 })
 
+// Encrypt: what was filled in, coerced; a missing required field is an error.
 describe('encryptParams', () => {
   const fields = [field({ name: 'gateId', label: 'Access gate ID', kind: 'objectId', required: true }), field({ name: 'note' })]
 
@@ -32,6 +37,7 @@ describe('encryptParams', () => {
   })
 })
 
+// Decrypt: the manifest's values first, then what the person typed.
 describe('decryptParams', () => {
   const fields = [
     field({ name: 'gateId', label: 'Access gate ID', kind: 'objectId', required: true }),

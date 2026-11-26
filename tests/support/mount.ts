@@ -4,9 +4,12 @@ import { vi } from 'vitest'
 import { computed, ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
+/** A gate id and its owner, as the mocks report them. */
 export const GATE = `0x${'a1'.repeat(32)}`
+/** The gate's owner, as the mocked chain reports it. */
 export const GATE_OWNER = `0x${'0b'.repeat(32)}`
 
+/** deferred(): a promise a test settles by hand, to hold an operation in flight. */
 export function deferred<T>() {
   let resolve!: (v: T) => void
   let reject!: (e: unknown) => void
@@ -17,6 +20,7 @@ export function deferred<T>() {
   return { promise, resolve, reject }
 }
 
+/** A minimal access-gate policy provider: one required field, the gate id. */
 export const nftProvider = {
   type: 'nft-gate',
   describe: () => ({
@@ -28,6 +32,7 @@ export const nftProvider = {
   }),
 }
 
+/** What a test chooses about the mounted view: the network, the account and what each mocked dependency does. */
 export interface Setup {
   network: string
   address: string | null
@@ -42,6 +47,7 @@ export interface Setup {
   trustManifests?: boolean
 }
 
+/** mountView(setup): mount the view with its wiring mocked; returns the wrapper and the controls a test needs. */
 export async function mountView(setup: Setup = { network: 'testnet', address: '0xowner' }) {
   vi.resetModules()
   const network = ref(setup.network)
@@ -120,9 +126,11 @@ export async function mountView(setup: Setup = { network: 'testnet', address: '0
   }
 }
 
+/** file(): a small file for the Encrypt step. */
 export function file() {
   return new File([new Uint8Array([1, 2, 3])], 'secret.txt')
 }
 
 /** The failure notice the view shows, if any. */
+/** alertText(wrapper): the text of the first alert. */
 export const alertText = (wrapper: ReturnType<typeof mount>) => wrapper.find('[role="alert"]').text()

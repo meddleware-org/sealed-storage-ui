@@ -10,20 +10,26 @@ import { useOperation } from '../composables/useOperation.js'
 import type { SealedResult } from '../types.js'
 import { signAndExecute, useWallet } from '../wallet.js'
 
+// The component's input and event.
 const props = defineProps<{ result: SealedResult }>()
 const emit = defineEmits<{ published: [digest: string] }>()
 
+// The shared operation and the wallet account.
 const op = useOperation()
 const { account } = useWallet()
+// The manifest as pretty JSON, and whether a discovery pointer can be published (access-gate content only).
 const json = computed(() => JSON.stringify(props.result.manifest, null, 2))
+// Only access-gate content can have a discovery pointer.
 const canPublish = computed(() => props.result.manifest.policyType === 'nft-gate')
 
+/** download(): save the manifest as a .seal.json file. */
 function download(): void {
   const blob = new Blob([json.value], { type: 'application/json' })
   triggerDownload(blob, `${safeFileName(props.result.manifest.label, 'sealed')}.seal.json`)
 }
 
 // Publish an on-chain discovery pointer (access-gate content only).
+/** publish(): publish an on-chain pointer so the gate's pass-holders can find the content; the wallet signs the transaction. */
 function publish(): Promise<void> {
   return op.run(async ({ isCurrent, config }) => {
     const m = props.result.manifest
@@ -33,12 +39,15 @@ function publish(): Promise<void> {
     op.status.value = 'Publishing on-chain pointer — approve the transaction in your wallet…'
     const seal = config.seal
     if (!seal) throw new Error(config.problem ?? 'Sealed Storage is not available on this network.')
+    // The pointer carries only the gate, the blob id, the Seal identity and the label: all public data.
     const tx = buildPublishSealedContentTransaction(
       { publishedAt: seal.publishedAt, policyConfigId: seal.policyConfigId },
       { gateId: String(m.params.gateId), blobId: m.blobId, sealId: m.id, label: m.label ?? '' },
     )
+    // The wallet signs and executes the pointer transaction.
     const { digest } = await signAndExecute(tx)
     if (!isCurrent()) return
+    // Tell the parent, which shows the digest.
     emit('published', digest)
     op.status.value = 'Published — gate pass-holders can now discover and unlock this content.'
   })
@@ -46,9 +55,12 @@ function publish(): Promise<void> {
 </script>
 
 <template>
+  <!-- The manifest as shown; it holds no secrets, so it can be copied and stored anywhere. -->
   <UiCodeBlock label="Manifest — save this; it is required to decrypt (it holds no secrets)" :code="json" />
+  <!-- Save the manifest to a file. -->
   <p><UiButton variant="secondary" @click="download">Download manifest</UiButton></p>
 
+  <!-- How long the ciphertext is stored, and how to keep it longer. -->
   <p class="lifetime">
     <template v-if="result.stored.endEpoch !== undefined">
       Stored on Walrus through epoch <strong>{{ result.stored.endEpoch }}</strong> ({{ result.stored.epochs }} epochs requested).
@@ -59,23 +71,27 @@ function publish(): Promise<void> {
     <a href="https://sui-walrus-storage.meddleware.co.uk/" rel="noopener">Walrus asset manager</a> (My blobs).
   </p>
 
+  <!-- The optional pointer (access-gate content only). -->
   <template v-if="canPublish">
     <p>
       Optional: publish an on-chain pointer so this gate's pass-holders can discover and unlock this content in the Unlock tab (no need to share
       the manifest).
     </p>
     <p>
+      <!-- Publishing needs a connected wallet. -->
       <UiButton :busy="op.busy.value" :disabled="!account" @click="publish">Publish discovery pointer</UiButton>
       <template v-if="!account"> Connect a wallet first.</template>
     </p>
     <p v-if="result.publishDigest">
       Published in transaction
+      <!-- The pointer's transaction, with an explorer link. -->
       <ExplorerLink :href="suiExplorerUrl('txblock', result.publishDigest, explorerNetwork)" :value="result.publishDigest" :chars="[10, 0]" />.
     </p>
   </template>
 </template>
 
 <style scoped>
+/* Long ids wrap. */
 .lifetime {
   overflow-wrap: anywhere;
 }

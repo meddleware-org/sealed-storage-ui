@@ -4,6 +4,7 @@
 // @meddleware/wallet-adapter singleton (via ./wallet.js): connecting here or in any other inline tool view (or the dashboard header)
 // reflects everywhere. This component owns what the three panels share: the tabs, the one running operation (progress and failure), and the
 // result of sealing.
+// Vue, the shared UI components, the wallet gate, the configuration, the shared operation and the three panels.
 import { computed, ref, watch } from 'vue'
 import { AppTabNav, UiLiveStatus, UiNotice, UiTabPanel, UiToolIntro, type AppTab } from '@meddleware/ui'
 import { WalletGuard } from '@meddleware/wallet-adapter'
@@ -17,28 +18,35 @@ import DecryptPanel from './DecryptPanel.vue'
 import EncryptPanel from './EncryptPanel.vue'
 import UnlockPanel from './UnlockPanel.vue'
 
+// The wallet prompt every panel shows until a wallet is connected, and the three tabs.
 const GUARD_MESSAGE = 'Connect a Sui wallet to encrypt and decrypt sealed content.'
 const TABS: AppTab[] = [
   { id: 'encrypt', label: 'Encrypt' },
   { id: 'decrypt', label: 'Decrypt' },
   { id: 'unlock', label: 'Unlock' },
 ]
+// The open tab.
 const tab = ref<string>('encrypt')
 
+// The shared wallet account, the policies the registry offers, and whether sealing is unavailable on this network.
 const { account } = useWallet()
 const providers = computed(() => registry.value.list() as SealPolicyProvider[])
 const disabled = computed(() => activeConfig.value.problem !== null)
 // The host runs a key server of its own (the ADR-0002 fallback): the one case where someone other than independent servers could decrypt.
+// Whether the host runs a key server of its own (the ADR-0002 fallback): the one case where someone other than independent servers could decrypt. The view then says so.
 const hostHoldsKeys = computed(() => activeConfig.value.custody === 'operator')
 
 // Deep link from access-gate-ui: ?gate=<id> preselects the access-gate policy and the gate.
+// Deep link from access-gate-ui: ?gate=<id> preselects the access-gate policy and the gate.
 const linkedGate = new URLSearchParams(location.search).get('gate')
 
+// The one running operation, shared by the panels through provide/inject.
 const operation = createOperation(computed(() => account.value?.address))
 provideOperation(operation)
 
 /** What sealing (or re-sealing) produced, shown on the Encrypt tab. */
 const result = ref<SealedResult | null>(null)
+/** onResealed(r): show a re-seal's result on the Encrypt tab. */
 function onResealed(r: SealedResult): void {
   result.value = r
   tab.value = 'encrypt'
@@ -60,14 +68,17 @@ watch(
 <template>
   <section aria-labelledby="sealed-title">
     <h2 id="sealed-title">Sealed Storage</h2>
+    <!-- A one-sentence introduction. -->
     <UiToolIntro>Client-side encrypted, access-gated storage on Walrus + Sui.</UiToolIntro>
 
+    <!-- Two warnings: sealing is unavailable on this network, or the host holds a key server and could decrypt. -->
     <UiNotice v-if="activeConfig.problem" type="warning" :message="activeConfig.problem" />
     <UiNotice v-else-if="hostHoldsKeys" type="warning">
       On {{ activeConfig.network }}, content is sealed with a key server run by Meddleware, who could therefore decrypt it. Do not
       seal anything you would not share with Meddleware.
     </UiNotice>
 
+    <!-- What a person should know before sealing: the threshold, the upgradeable package, access that cannot be taken back, what is public, and how long storage lasts. -->
     <details>
       <summary>What you should know before sealing</summary>
       <ul>
@@ -96,6 +107,7 @@ watch(
     <UiLiveStatus label="Progress" :message="operation.status.value ?? ''" />
     <UiNotice v-if="operation.error.value" type="error" :message="operation.error.value" />
 
+    <!-- Each panel is a live tab panel; v-show keeps it mounted so each tab keeps its state. -->
     <UiTabPanel v-show="tab === 'encrypt'" id-prefix="seal" tab="encrypt">
       <WalletGuard :message="GUARD_MESSAGE">
         <EncryptPanel v-model:result="result" :providers="providers" :linked-gate="linkedGate" :disabled="disabled" />

@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test'
 import { E2E_GATES, E2E_GATE_OWNER } from '../src/e2e-data.js'
 import { BLOB_ID, BLOB_OBJECT, END_EPOCH, MANIFEST, confirm, decryptReady, disconnected, sealed, unlock } from './open.js'
 
+// Landmarks, the three tabs and the wallet prompt.
 test('mounts, shows its landmarks and the tabs, and asks for a wallet first', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (e) => errors.push(e.message))
@@ -17,6 +18,7 @@ test('mounts, shows its landmarks and the tabs, and asks for a wallet first', as
   expect(errors).toEqual([])
 })
 
+// The Confirm step shows what the content is sealed to, including who owns the gate.
 test('the Confirm step shows everything the content is sealed to, including who owns the gate', async ({ page }) => {
   await confirm(page)
   await expect(page.getByText('Studio pass').first()).toHaveCount(0) // the picker is gone; the id is what is sealed to
@@ -29,6 +31,7 @@ test('the Confirm step shows everything the content is sealed to, including who 
   await expect(page.getByText(/Stored on Walrus for 5 epochs/)).toBeVisible()
 })
 
+// Seal and store, then show the manifest and the lifetime, and publish a pointer.
 test('sealing stores the ciphertext, shows the manifest and the lifetime, and publishes a pointer', async ({ page }) => {
   await sealed(page)
   const manifest = page.getByRole('figure').getByRole('code')
@@ -43,6 +46,7 @@ test('sealing stores the ciphertext, shows the manifest and the lifetime, and pu
   await expect(page.getByText('Published — gate pass-holders can now discover and unlock this content.')).toBeVisible()
 })
 
+// Decrypt: read the ciphertext, ask the wallet to sign, offer the file.
 test('decrypting reads the ciphertext back, asks the wallet to sign, and offers the file', async ({ page }) => {
   await decryptReady(page)
   await page.getByLabel('Your pass NFT *').fill(`0x${'d4'.repeat(32)}`)
@@ -52,6 +56,7 @@ test('decrypting reads the ciphertext back, asks the wallet to sign, and offers 
   await expect(page.getByText('Decrypted — download started.')).toBeVisible()
 })
 
+// A manifest for another network is refused with the reason.
 test('a manifest for another network is refused with the reason', async ({ page }) => {
   await decryptReady(page)
   await page.getByRole('button', { name: 'Back', exact: true }).click()
@@ -60,6 +65,7 @@ test('a manifest for another network is refused with the reason', async ({ page 
   await expect(page.getByRole('button', { name: 'Next' })).toBeDisabled()
 })
 
+// The Unlock tab offers the gates this account administers.
 test('the Unlock tab offers the gates this account administers', async ({ page }) => {
   await unlock(page)
   const options = page.getByRole('combobox', { name: 'Access gate ID' }).getByRole('option')

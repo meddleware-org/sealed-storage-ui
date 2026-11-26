@@ -5,8 +5,10 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = join(import.meta.dirname, '..')
+// The old spelling of the company name.
 const SPELLING = /MeddleWare/
 
+/** The .vue files under a directory, recursively. */
 function vueFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
     e.isDirectory() ? vueFiles(join(dir, e.name)) : e.name.endsWith('.vue') ? [join(dir, e.name)] : [],
@@ -16,6 +18,7 @@ function vueFiles(dir: string): string[] {
 /** The template of a single-file component: what is rendered, without the script and style blocks. */
 const templateOf = (file: string) => readFileSync(file, 'utf8').replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '')
 
+// What a person reads uses the product's words only (D117).
 describe('user-visible wording', () => {
   it('the page title and description', () => {
     const html = readFileSync(join(root, 'index.html'), 'utf8')

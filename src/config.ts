@@ -14,6 +14,7 @@ import { useNetwork } from '@meddleware/wallet-adapter'
 import { withRuntimeEnv } from '@meddleware/ui'
 import { notAvailableNow, notAvailableOn } from './availability.js'
 
+/** A source of build-time settings: Vite's `import.meta.env`, or a test's table. */
 type EnvSource = Record<string, string | undefined>
 // Build-time values, with the runtime endpoint overrides (/runtime-config.json, ADR-0005) on top.
 const env: EnvSource = withRuntimeEnv((import.meta as unknown as { env?: EnvSource }).env ?? {})
@@ -29,6 +30,7 @@ function own<T>(table: Record<string, T>, key: string): T | undefined {
   return Object.hasOwn(table, key) ? table[key] : undefined
 }
 
+/** Split a comma-separated setting into its trimmed, non-empty items. */
 function csv(v: string | undefined): string[] {
   return (v ?? '').split(',').map((s) => s.trim()).filter(Boolean)
 }

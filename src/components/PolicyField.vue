@@ -6,6 +6,7 @@ import { UiCheckField, UiDateTimeField, UiTextField } from '@meddleware/ui'
 import { browserZone } from '@meddleware/web-utils'
 import type { FieldSpec } from '@meddleware/sealed-storage-client'
 
+// The component's inputs and event.
 const props = defineProps<{
   field: FieldSpec
   id: string
@@ -16,15 +17,19 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: string | boolean] }>()
 
+// The three views of the one model value: text, a checkbox state and an ISO instant.
 const label = computed(() => props.field.label)
+// Text view of the model.
 const text = computed({
   get: () => (typeof props.modelValue === 'string' ? props.modelValue : ''),
   set: (v: string) => emit('update:modelValue', v),
 })
+// Checkbox view of the model.
 const checked = computed({
   get: () => props.modelValue === true,
   set: (v: boolean) => emit('update:modelValue', v),
 })
+// Date-time view of the model: an ISO instant, or null while empty.
 const instant = computed({
   get: () => (typeof props.modelValue === 'string' && props.modelValue !== '' ? props.modelValue : null),
   set: (v: string | null) => emit('update:modelValue', v ?? ''),

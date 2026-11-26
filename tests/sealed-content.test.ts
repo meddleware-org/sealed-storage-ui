@@ -9,6 +9,7 @@ const { listSealedContent, gateOperators, isEventHistoryPruned } = vi.hoisted(()
   isEventHistoryPruned: vi.fn((e: unknown) => e instanceof Error && e.name === 'EventHistoryPrunedError'),
 }))
 
+/** load(cfg, indexer): load the wrapper against a mocked configuration and client. */
 async function load(cfg: Record<string, unknown>, indexer = '') {
   vi.resetModules()
   vi.doMock('@meddleware/sealed-storage-client', () => ({ listSealedContent, gateOperators, isEventHistoryPruned }))
@@ -17,12 +18,15 @@ async function load(cfg: Record<string, unknown>, indexer = '') {
   return import('../src/sealed-content.js')
 }
 
+// Forget the mocks between tests.
 afterEach(() => {
   listSealedContent.mockReset()
   vi.resetModules()
 })
 
+// What is listed and how: the deployment, the gate, the cap, the publishers and the optional index.
 describe('discoverSealedContent', () => {
+  // Lists the gate\.
   it('lists the gate\'s pointers at the deployment\'s original id', async () => {
     listSealedContent.mockResolvedValue({ pointers: [{ label: 'a' }], cursor: null, source: 'rpc' })
     const { discoverSealedContent, MAX_DISCOVERED } = await load({ network: 'testnet', seal: { originalId: '0x42', publishedAt: '0x43' } })
@@ -30,6 +34,7 @@ describe('discoverSealedContent', () => {
     expect(listSealedContent).toHaveBeenCalledWith({ client: true }, { originalId: '0x42', gateId: '0xgate', limit: MAX_DISCOVERED, indexer: undefined, publishers: ['0xop'] })
   })
 
+  // Lists only the gate operators\.
   it('lists only the gate operators\' pointers by default, and everyone\'s only on request', async () => {
     listSealedContent.mockResolvedValue({ pointers: [], cursor: null, source: 'rpc' })
     const { discoverSealedContent } = await load({ network: 'testnet', accessGateOriginalId: '0xa5', seal: { originalId: '0x42', publishedAt: '0x43' } })
@@ -43,6 +48,7 @@ describe('discoverSealedContent', () => {
     expect(listSealedContent.mock.calls[0][1]).not.toHaveProperty('publishers')
   })
 
+  // Says in plain words that older content cannot be listed when the node has pruned the history, and logs the node\.
   it('says in plain words that older content cannot be listed when the node has pruned the history, and logs the node\'s answer', async () => {
     const pruned = Object.assign(new Error('The network node no longer keeps events this old.'), { name: 'EventHistoryPrunedError', cause: new Error('below earliest available') })
     listSealedContent.mockRejectedValueOnce(pruned)
@@ -84,6 +90,7 @@ describe('discoverSealedContent', () => {
   })
 })
 
+// The gate owner shown on the Confirm step is read from the deployment's access_gate package.
 describe('gateOperatorsFor', () => {
   it('reads the gate operator for the Confirm step from the deployment\'s access_gate package', async () => {
     const { gateOperatorsFor } = await load({ network: 'testnet', accessGateOriginalId: '0xa5', seal: { originalId: '0x42', publishedAt: '0x43' } })

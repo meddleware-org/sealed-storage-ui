@@ -2,6 +2,7 @@
 // build drops it). A mock wallet is registered like an extension, and the chain client is a stub that holds two access gates the mock
 // account administers (offered as choices, and read for the gate owner on the Confirm step). Sealing itself is stood in for by
 // `e2e-controller.ts`, and the Walrus endpoints are answered by the specs.
+// The recorded deployment, the mock wallet and stub chain, and the two gates' ids.
 import { accessGateDeployment } from '@meddleware/access-gate-client/deployments'
 import { MOCK_ADDRESS, createStubClient, installE2eWallet, okTransaction } from '@meddleware/wallet-adapter/testing'
 import { E2E_GATES, E2E_GATE_OWNER } from './e2e-data.js'
@@ -28,16 +29,23 @@ function gate(over: Record<string, unknown>) {
   }
 }
 
+/** Register the mock wallet with a stub chain that holds the two gates the mock account administers. */
 export function installE2e(): void {
+  // The recorded testnet deployment, so the stub's object types match what the client looks for.
   const d = accessGateDeployment('testnet')
+  // type(name): the full Move type name of an access_gate object.
   const type = (name: string) => `${d.originalId}::access_gate::${name}`
   const object = (objectId: string, name: string, json: Record<string, unknown>) => ({ objectId, type: type(name), json })
+  // The two gates the mock account administers.
   const gates: Record<string, Record<string, unknown>> = {
     [E2E_GATES.studio]: gate({ price_mist: '50000000', default_uses: '10', nft_name: 'Studio pass', soulbound: true }),
     [E2E_GATES.open]: gate({ nft_name: 'Open pass' }),
   }
+  // The objects the stub returns by id (only the gates here).
   const objects: Record<string, unknown> = {}
   for (const [id, json] of Object.entries(gates)) objects[id] = object(id, 'Gate', json)
+  // One admin capability per gate, owned by the mock account.
   const owned = Object.keys(gates).map((id, i) => object(hex(`c${i}`), 'AdminCap', { gate_id: id }))
+  // Register the wallet; every transaction "succeeds" with a fixed digest.
   installE2eWallet({ address: MOCK_ADDRESS, client: createStubClient({ owned, objects, executed: okTransaction(`E2E${'a'.repeat(41)}`) }) })
 }

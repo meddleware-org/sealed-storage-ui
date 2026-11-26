@@ -9,6 +9,7 @@ vi.mock('../src/config.js', () => ({ network: { value: 'testnet' } }))
 
 import App from '../src/App.vue'
 
+// The shell around the view: heading, network badge, documentation links and brand mark.
 describe('App', () => {
   it('is the tool shell around the view', () => {
     const w = mount(App)
@@ -33,6 +34,7 @@ describe('App', () => {
   })
 })
 
+// The favicon set is shared, not the app's own.
 describe('the brand', () => {
   it('keeps no icon of its own: the favicon set comes from the shared brand icons', () => {
     expect(existsSync('public/favicon.svg')).toBe(false)

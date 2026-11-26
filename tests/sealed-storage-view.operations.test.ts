@@ -1,19 +1,22 @@
+// SealedStorageView with its wiring mocked: network and account are refs the test switches mid-operation, and every slow dependency is a
+// promise the test settles by hand. Covers audit F11 (a result that arrives after a switch is dropped), F12 (the lifetime is shown) and F13
+// (the Confirm step shows what the content is sealed to; a gate from a link needs an explicit OK).
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 import { flushPromises } from '@vue/test-utils'
 import { GATE, GATE_OWNER, alertText, deferred, file, mountView } from './support/mount.js'
 
-// SealedStorageView with its wiring mocked: network and account are refs the test switches mid-operation, and every slow dependency is a
-// promise the test settles by hand. Covers audit F11 (a result that arrives after a switch is dropped), F12 (the lifetime is shown) and F13
-// (the Confirm step shows what the content is sealed to; a gate from a link needs an explicit OK).
 const progress = (w: Awaited<ReturnType<typeof mountView>>['wrapper']) => w.get('output[aria-label="Progress"]').text()
 
+// Forget the mocks between tests.
 afterEach(() => {
   window.history.replaceState({}, '', '/')
   vi.resetModules()
 })
 
+// F11: nothing from an operation that was discarded (the network or the account changed) lands on the new state.
 describe('F11: an in-flight operation never finishes against another network or account', () => {
+  // Drops a seal that completes after a network switch: no manifest, nothing stored on the new network.
   it('drops a seal that completes after a network switch: no manifest, nothing stored on the new network', async () => {
     const t = await mountView()
     const sealed = deferred<{ id: string; ciphertext: Uint8Array }>()
@@ -36,6 +39,7 @@ describe('F11: an in-flight operation never finishes against another network or 
     expect(t.wrapper.vm.result).toBeNull()
   })
 
+  // Drops a stored blob that completes after a network switch.
   it('drops a stored blob that completes after a network switch', async () => {
     const t = await mountView()
     t.encrypt.mockResolvedValue({ id: 'ff', ciphertext: new Uint8Array([9]) })
@@ -59,6 +63,7 @@ describe('F11: an in-flight operation never finishes against another network or 
     expect(panel.step).toBe(0)
   })
 
+  // Drops a result that completes after an account switch (the Blob object went to the previous account).
   it('drops a result that completes after an account switch (the Blob object went to the previous account)', async () => {
     const t = await mountView()
     t.encrypt.mockResolvedValue({ id: 'ff', ciphertext: new Uint8Array([9]) })
@@ -76,6 +81,7 @@ describe('F11: an in-flight operation never finishes against another network or 
     expect(t.wrapper.vm.result).toBeNull()
   })
 
+  // Labels the manifest with the network the seal started on.
   it('labels the manifest with the network the seal started on', async () => {
     const t = await mountView()
     t.encrypt.mockResolvedValue({ id: 'ff', ciphertext: new Uint8Array([9]) })
@@ -88,6 +94,7 @@ describe('F11: an in-flight operation never finishes against another network or 
     expect(t.wrapper.vm.result.manifest.blobId).toBe('B1')
   })
 
+  // Drops a discovery that completes after a network switch.
   it('drops a discovery that completes after a network switch', async () => {
     const t = await mountView()
     const found = deferred<unknown[]>()
@@ -105,6 +112,7 @@ describe('F11: an in-flight operation never finishes against another network or 
     expect(t.discoverSealedContent.mock.calls[0][1].config.network).toBe('testnet')
   })
 
+  // Drops a failure from a discarded operation instead of showing it on the new network.
   it('drops a failure from a discarded operation instead of showing it on the new network', async () => {
     const t = await mountView()
     const found = deferred<unknown[]>()
@@ -120,6 +128,7 @@ describe('F11: an in-flight operation never finishes against another network or 
     expect(t.wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 
+  // Lets an operation started after the switch complete normally.
   it('lets an operation started after the switch complete normally', async () => {
     const t = await mountView()
     t.network.value = 'mainnet'
@@ -131,6 +140,7 @@ describe('F11: an in-flight operation never finishes against another network or 
     expect(progress(t.wrapper)).toBe('No sealed content published for this gate.')
   })
 
+  // Shows a failure of the current operation.
   it('shows a failure of the current operation', async () => {
     const t = await mountView()
     t.discoverSealedContent.mockRejectedValue(new Error('the node is down'))
@@ -142,7 +152,9 @@ describe('F11: an in-flight operation never finishes against another network or 
   })
 })
 
+// F12: the storage lifetime is shown on the Confirm step and on the result.
 describe('F12: the storage lifetime is shown', () => {
+  // Shows the epochs on the Confirm step and the end epoch on the result.
   it('shows the epochs on the Confirm step and the end epoch on the result', async () => {
     const t = await mountView()
     const panel = t.encryptPanel()
@@ -163,6 +175,7 @@ describe('F12: the storage lifetime is shown', () => {
     expect(t.wrapper.find('.lifetime a').attributes('href')).toBe('https://sui-walrus-storage.meddleware.co.uk/')
   })
 
+  // Says so when the publisher did not report the end epoch.
   it('says so when the publisher did not report the end epoch', async () => {
     const t = await mountView()
     t.encrypt.mockResolvedValue({ id: 'ff', ciphertext: new Uint8Array([9]) })
@@ -176,7 +189,9 @@ describe('F12: the storage lifetime is shown', () => {
   })
 })
 
+// F13: the Confirm step shows what the content is sealed to; a gate from a link needs an explicit OK.
 describe('F13: the Confirm step shows what the content is sealed to', () => {
+  // Lists the gate id and the gate owner read from the chain.
   it('lists the gate id and the gate owner read from the chain', async () => {
     const t = await mountView()
     const panel = t.encryptPanel()
@@ -192,6 +207,7 @@ describe('F13: the Confirm step shows what the content is sealed to', () => {
     expect(t.gateOperatorsFor).toHaveBeenCalledWith(GATE, expect.objectContaining({ network: 'testnet' }))
   })
 
+  // Warns when the gate cannot be read as a gate of this network.
   it('warns when the gate cannot be read as a gate of this network', async () => {
     const t = await mountView()
     t.gateOperatorsFor.mockRejectedValueOnce(new Error('not a Gate of this package'))
@@ -204,6 +220,7 @@ describe('F13: the Confirm step shows what the content is sealed to', () => {
     expect(t.wrapper.text()).toContain('not a Gate of this package')
   })
 
+  // Requires an explicit confirmation of a gate preselected by a ?gate= link.
   it('requires an explicit confirmation of a gate preselected by a ?gate= link', async () => {
     const t = await mountView({ network: 'testnet', address: '0xowner', search: `/?gate=${GATE}` })
     const panel = t.encryptPanel()
@@ -226,6 +243,7 @@ describe('F13: the Confirm step shows what the content is sealed to', () => {
     expect(button().attributes('disabled')).toBeUndefined()
   })
 
+  // Does not ask again once the user has chosen a different gate themselves.
   it('does not ask again once the user has chosen a different gate themselves', async () => {
     const t = await mountView({ network: 'testnet', address: '0xowner', search: `/?gate=${GATE}` })
     const panel = t.encryptPanel()
@@ -235,6 +253,7 @@ describe('F13: the Confirm step shows what the content is sealed to', () => {
     expect(t.wrapper.text()).not.toContain('preselected by a link')
   })
 
+  // Does not ask when no link was followed.
   it('does not ask when no link was followed', async () => {
     const t = await mountView()
     const panel = t.encryptPanel()
@@ -246,9 +265,11 @@ describe('F13: the Confirm step shows what the content is sealed to', () => {
   })
 })
 
+// A re-seal's result is shown on the Encrypt tab; already-current content is reported and left alone.
 describe('re-sealing', () => {
   const manifest = JSON.stringify({ policyType: 'nft-gate', id: 'old', blobId: 'B1', network: 'testnet', params: { gateId: GATE }, label: 'notes.txt' })
 
+  /** Mount the view, put the manifest into the Decrypt panel and move to its second step. */
   async function ready() {
     const t = await mountView({ network: 'testnet', address: '0xowner', trustManifests: true })
     const panel = t.decryptPanel()
@@ -259,6 +280,7 @@ describe('re-sealing', () => {
     return { t, panel }
   }
 
+  // Shows the new manifest on the Encrypt tab, at its last step.
   it('shows the new manifest on the Encrypt tab, at its last step', async () => {
     const { t, panel } = await ready()
     t.resealCiphertext.mockResolvedValue({ id: 'new', ciphertext: new Uint8Array([2]) })
@@ -272,6 +294,7 @@ describe('re-sealing', () => {
     expect(progress(t.wrapper)).toMatch(/^Re-sealed/)
   })
 
+  // Does nothing, and says so, when the content is already sealed to the current key servers.
   it('does nothing, and says so, when the content is already sealed to the current key servers', async () => {
     const { t, panel } = await ready()
     t.resealCiphertext.mockResolvedValue(null)

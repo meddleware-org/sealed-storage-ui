@@ -1,3 +1,6 @@
+// Vite configuration for the Sealed Storage app: the fleet's shared application preset (@meddleware/frontend-config/vite) plus what is particular to this app
+// (the end-to-end build's stand-in for the Seal controller).
+// Node's URL helper, the Vue plugin, defineConfig and the shared preset.
 import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
@@ -9,10 +12,14 @@ import { meddlewareApp } from '@meddleware/frontend-config/vite'
 //
 // The e2e build seals nothing for real (that needs a live key-server committee): the controller module is swapped for a stand-in. Like
 // the harness in `main.ts` it needs the mode AND the flag, and `npm run check:bundle` looks for the stand-in in every production build.
+// The stand-in controller file, as an absolute path for the alias.
 const standIn = fileURLToPath(new URL('./src/e2e-controller.ts', import.meta.url))
 
+// A function, because the alias depends on the mode.
 export default defineConfig((env) => {
+  // Only an end-to-end build (the mode AND the flag) swaps the controller module for the stand-in; every other build gets no alias.
   const alias: Record<string, string> =
     env.mode === 'e2e' && process.env.VITE_E2E === '1' ? { '@meddleware/sealed-storage-client/controller': standIn } : {}
+  // The shared preset with this app's name and the alias.
   return meddlewareApp({ plugins: [vue()], name: 'Sealed Storage', config: { resolve: { alias } } })(env)
 })

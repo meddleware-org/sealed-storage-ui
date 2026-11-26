@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 // The wrapper applies the active network's endpoints and the app's limits to
 // @meddleware/walrus-storage-client/http (whose own behaviour is tested there).
+/** Load the wrapper against a mocked configuration and a recorded client. */
 async function load(cfg: { network?: string; walrusPublisher?: string; walrusAggregator?: string; walrusEpochs?: number }) {
   vi.resetModules()
   vi.doMock('../src/config.js', () => ({
@@ -18,6 +19,7 @@ async function load(cfg: { network?: string; walrusPublisher?: string; walrusAgg
   return import('../src/walrus.js')
 }
 
+// Forget the mocks between tests.
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.resetModules()
@@ -25,7 +27,9 @@ afterEach(() => {
 
 const OWNER = '0x' + 'ab'.repeat(32)
 
+// Storing: the network's publisher, the Blob object sent to the owner, the lifetime, the refusals and the size cap.
 describe('storeBlob', () => {
+  // Stores permanent at the network publisher, sends the Blob object to the owner.
   it('stores permanent at the network publisher, sends the Blob object to the owner', async () => {
     const fetchSpy = vi.fn(async () => Response.json({ newlyCreated: { blobObject: { blobId: 'B1' } } }))
     vi.stubGlobal('fetch', fetchSpy)
@@ -38,12 +42,14 @@ describe('storeBlob', () => {
     expect(url.searchParams.get('send_object_to')).toBe(OWNER)
   })
 
+  // Returns the publisher\.
   it('returns the publisher\'s end epoch and Blob object id so the lifetime can be shown', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ newlyCreated: { blobObject: { id: '0xobj', blobId: 'B3' }, resource: { endEpoch: 17 } } })))
     const { storeBlob } = await load({})
     expect(await storeBlob(new Uint8Array([1]), { sendObjectTo: OWNER })).toEqual({ blobId: 'B3', endEpoch: 17, blobObjectId: '0xobj' })
   })
 
+  // Uses the configuration it is given, not the active one (a switch mid-flight).
   it('uses the configuration it is given, not the active one (a switch mid-flight)', async () => {
     const fetchSpy = vi.fn(async () => Response.json({ newlyCreated: { blobObject: { blobId: 'B4' } } }))
     vi.stubGlobal('fetch', fetchSpy)
@@ -57,6 +63,7 @@ describe('storeBlob', () => {
     expect(url.searchParams.get('epochs')).toBe('9')
   })
 
+  // Refuses an already-certified answer: the user would own no Blob object.
   it('refuses an already-certified answer: the user would own no Blob object', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ alreadyCertified: { blobId: 'B2', endEpoch: 9 } })))
     const { storeBlob } = await load({})
@@ -82,6 +89,7 @@ describe('storeBlob', () => {
   })
 })
 
+// Reading: the network's aggregator, with the strict consistency check.
 describe('readBlob', () => {
   it('reads from the network aggregator with a strict consistency check', async () => {
     const fetchSpy = vi.fn(async () => new Response(new Uint8Array([7])))

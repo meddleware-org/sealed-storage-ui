@@ -1,9 +1,13 @@
+# What git ignores in this repository.
+# Installed packages and build output.
 node_modules/
 dist/
+# Local environment overrides are never committed; the documented example is.
 .env
 .env.*
 !.env.example
 
+# Browser-test output.
 test-results/
 
 # Lighthouse CI
