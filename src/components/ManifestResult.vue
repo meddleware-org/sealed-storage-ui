@@ -55,7 +55,6 @@ function publish(): Promise<void> {
 </script>
 
 <template>
-  <!-- The manifest as shown; it holds no secrets, so it can be copied and stored anywhere. -->
   <UiCodeBlock label="Manifest — save this; it is required to decrypt (it holds no secrets)" :code="json" />
   <!-- Save the manifest to a file. -->
   <p><UiButton variant="secondary" @click="download">Download manifest</UiButton></p>
