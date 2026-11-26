@@ -60,7 +60,7 @@
     "@meddleware/walrus-storage-client": "^0.0.35",
     "@meddleware/web-utils": "^0.0.4",
     "@mysten/sui": "^2.33.2",
-    "@mysten/wallet-standard": "^0.21.0",
+    "@mysten/wallet-standard": "^0.22.1",
     "vue": "^3.5.43"
   },
   "peerDependencies": {
